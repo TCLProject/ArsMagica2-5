@@ -60,8 +60,8 @@ import net.minecraftforge.fluids.FluidRegistry;
 
 import java.io.File;
 
-//@Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.7", dependencies = "required-after:AnimationAPI")
-@Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.7", dependencies = "required-after:AnimationAPI;required-after:CoFHCore")
+//@Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.8", dependencies = "required-after:AnimationAPI")
+@Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.8", dependencies = "required-after:AnimationAPI;required-after:CoFHCore")
 public class AMCore{
 
 	@Instance(value = "arsmagica2")

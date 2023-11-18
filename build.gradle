@@ -28,7 +28,7 @@ repositories {
 
 apply plugin: 'forge'
 
-version = "1.6.7"
+version = "1.6.8"
 group= "am2" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "AM2.5-LTS"
 sourceCompatibility = 1.8

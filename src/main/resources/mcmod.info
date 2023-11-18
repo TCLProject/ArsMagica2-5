@@ -3,7 +3,7 @@
   "modid": "arsmagica2",
   "name": "Ars Magica 2",
   "description": "A look into what Minecraft could become if you add a splash of magic...",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
