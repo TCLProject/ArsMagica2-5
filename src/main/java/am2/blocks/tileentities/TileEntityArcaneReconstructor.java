@@ -275,7 +275,7 @@ public class TileEntityArcaneReconstructor extends TileEntityAMPower implements 
 			return true;
 		}
 
-		if (inventory[SLOT_ACTIVE].isItemDamaged()){
+		if (inventory[SLOT_ACTIVE].isItemDamaged() && inventory[SLOT_ACTIVE].getItem().isRepairable()){
 			if (!worldObj.isRemote)
 				inventory[SLOT_ACTIVE].damageItem(-1, getDummyEntity());
 			return true;
