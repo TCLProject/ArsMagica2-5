@@ -59,6 +59,8 @@ import net.minecraftforge.fluids.FluidContainerRegistry.FluidContainerData;
 import net.minecraftforge.fluids.FluidRegistry;
 
 import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
 
 //@Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.4", dependencies = "required-after:AnimationAPI")
 @Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.4", dependencies = "required-after:AnimationAPI;required-after:CoFHCore")
@@ -163,6 +165,23 @@ public class AMCore{
 			LogHelper.info("A compatible MagicBees version was not found, compat not loading.");
 		}
 
+		// Reduce onEntityLiving() lag by skipping unnecessary tasks if all the spells below are disabled.
+		Set<String> LivingEntitySpells = new HashSet<>();
+		boolean LivingEntitySpellsEnabled = false;
+
+		LivingEntitySpells.add("Accelerate");
+		LivingEntitySpells.add("Blink");
+		LivingEntitySpells.add("FortifyTime");
+		LivingEntitySpells.add("Shield");
+		LivingEntitySpells.add("Slow");
+
+		for (String spell : LivingEntitySpells) {
+			if (AMCore.skillConfig.isSkillEnabled(spell))
+				LivingEntitySpellsEnabled = true;
+			break;
+		}
+
+		AMEventHandler.EnableLivingEntitySpells = LivingEntitySpellsEnabled;
 	}
 
 	private void registerFlickerOperators(){

@@ -91,6 +91,8 @@ import static am2.blocks.liquid.BlockLiquidEssence.liquidEssenceMaterial;
 
 public class AMEventHandler{
 
+	static boolean EnableLivingEntitySpells = true;
+
 	@SubscribeEvent
 	public void onPotionBrewed(PotionBrewedEvent brewEvent){
 		for (ItemStack stack : brewEvent.brewingStacks){
@@ -584,7 +586,7 @@ public class AMEventHandler{
 			}
 		}
 
-		if (ent instanceof EntityPlayer) {
+		if (EnableLivingEntitySpells && ent instanceof EntityPlayer) {
 			// accelerated blocks and entities are done outside of the 5-tick performance optimisation to make them smooth
 			Map<String, String> acceleratedBlocks = extendedProperties.getExtraVariablesContains("accelerated_fast_tile_");
 			for (Map.Entry<String, String> entry : acceleratedBlocks.entrySet()) {
