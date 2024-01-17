@@ -134,7 +134,6 @@ public class TileEntityOcculus extends TileEntity implements IInventory{
 
 	@Override
 	public boolean isItemValidForSlot(int i, ItemStack itemstack){
-		//TODO: validate new spell item
 		if (i == 1 && itemstack.getItem() instanceof ItemWritableBook){
 			return true;
 		}

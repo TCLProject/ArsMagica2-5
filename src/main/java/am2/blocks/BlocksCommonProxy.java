@@ -16,6 +16,8 @@ import cpw.mods.fml.common.registry.GameData;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import net.minecraft.block.Block;
+import net.minecraft.block.material.MapColor;
+import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.*;
@@ -105,6 +107,10 @@ public class BlocksCommonProxy{
 	public static BlockStormSawtooth stormSawtooth;
 	public static BlockImbuedMoonflower imbuedMoonflower;
 
+	public static Block genericSpace;
+	public static Block genericSolid;
+	public static Block tickingAir;
+
 	//--------------------------------------------------------------
 	// End Blocks
 	//---------------------------------------------------------------
@@ -112,6 +118,9 @@ public class BlocksCommonProxy{
 	public static int blockRenderID;
 	public static int commonBlockRenderID;
 	public static AMCreativeTab blockTab;
+
+	public static Material materialGenericSolid;
+	public static Material materialNegativeSpace;
 
 	private static ArrayList<Block> arsMagicaBlocksList;
 
@@ -195,6 +204,9 @@ public class BlocksCommonProxy{
 	}
 
 	public void InstantiateBlocks(){
+		materialGenericSolid = (new Material(MapColor.stoneColor));
+		materialNegativeSpace = new MaterialNegativeSpace();
+
 		essenceRefiner = new BlockEssenceRefiner().setUnlocalizedNameAndID("arsmagica2:essence_refiner").setCreativeTab(blockTab);
 		blockMageTorch = new BlockMageLight().setUnlocalizedNameAndID("arsmagica2:magetorch").setCreativeTab(blockTab);
 		illusionBlock = (IllusionBlock)new IllusionBlock().setUnlocalizedNameAndID("arsmagica2:illusionBlock").setCreativeTab(blockTab);
@@ -266,6 +278,8 @@ public class BlocksCommonProxy{
 		rainRockrose = (BlockRainRockrose) new BlockRainRockrose().setUnlocalizedNameAndID("arsmagica2:rainRockrose");
 		stormSawtooth = (BlockStormSawtooth) new BlockStormSawtooth().setUnlocalizedNameAndID("arsmagica2:stormSawtooth");
 		imbuedMoonflower = (BlockImbuedMoonflower) new BlockImbuedMoonflower().setUnlocalizedNameAndID("arsmagica2:imbuedMoonflower");
+
+		tickingAir = new BlockTickingAir().setBlockName("arsmagica2:tickingAir").setCreativeTab(blockTab);
 
 		blockTab.setIconItemIndex(new ItemBlock(manaBattery));
 	}
@@ -831,6 +845,8 @@ public class BlocksCommonProxy{
 		registerBlock(stormSawtooth, "stormSawtooth");
 		registerBlock(imbuedMoonflower, "imbuedMoonflower");
 
+		registerBlock(tickingAir, "tickingAir");
+
 		//if you need a special item placer for the block, set it here instead of registering the block normally above
 		/*Item.itemsList[BlocksCommonProxy.witchwoodSingleSlab.blockID] = new ItemSlab(BlocksCommonProxy.witchwoodSingleSlab.blockID - 256, BlocksCommonProxy.witchwoodSingleSlab, BlocksCommonProxy.witchwoodDoubleSlab, false);
 		Item.itemsList[BlocksCommonProxy.witchwoodDoubleSlab.blockID] = new ItemSlab(BlocksCommonProxy.witchwoodDoubleSlab.blockID - 256, BlocksCommonProxy.witchwoodSingleSlab, BlocksCommonProxy.witchwoodDoubleSlab, true);
@@ -927,5 +943,33 @@ public class BlocksCommonProxy{
 	}
 
 	public void registerRenderInformation(){
+	}
+
+	public class MaterialNegativeSpace extends Material
+	{
+		public MaterialNegativeSpace()
+		{
+			super(MapColor.airColor);
+
+			setReplaceable();
+		}
+
+		@Override
+		public boolean isSolid()
+		{
+			return false;
+		}
+
+		@Override
+		public boolean getCanBlockGrass()
+		{
+			return false;
+		}
+
+		@Override
+		public boolean blocksMovement()
+		{
+			return false;
+		}
 	}
 }

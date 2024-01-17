@@ -34,7 +34,7 @@ public class LifeDrain implements ISpellComponent{
 			return true;
 		}
 		int magnitude = SpellUtils.instance.getModifiedInt_Add(4, stack, caster, target, world, 0, SpellModifiers.DAMAGE);
-
+		LifeTap.tryDrainLP((EntityLivingBase)target, magnitude * 100);
 		boolean success = SpellHelper.instance.attackTargetSpecial(stack, target, DamageSource.causeIndirectMagicDamage(caster, caster), SpellUtils.instance.modifyDamage(caster, magnitude));
 
 		if (success){

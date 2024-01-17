@@ -49,9 +49,6 @@ public class EntityAISpinAttack<T> extends EntityAIBase{
 	public void resetTask(){
 		((IArsMagicaBoss)host).setCurrentAction(BossActions.IDLE);
 		cooldownTicks = 150;
-		
-		/*if (host.worldObj.isRemote)
-			SoundHelper.instance.stopSound("arsmagica2:mob.natureguardian.whirlloop");*/
 
 		super.resetTask();
 	}

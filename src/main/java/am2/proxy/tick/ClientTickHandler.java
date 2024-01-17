@@ -29,6 +29,7 @@ import am2.particles.AMParticle;
 import am2.particles.ParticleFadeOut;
 import am2.playerextensions.ExtendedProperties;
 import am2.power.PowerNodeEntry;
+import am2.proxy.ClientProxy;
 import am2.spell.SpellHelper;
 import am2.spell.SpellUtils;
 import am2.spell.components.Telekinesis;
@@ -83,6 +84,8 @@ public class ClientTickHandler{
 	private PowerNodeEntry powerData = null;
 
 	private String lastWorldName;
+
+	public static int ticksInGame = 0;
 
 	private void gameTick_Start(){
 
@@ -145,6 +148,7 @@ public class ClientTickHandler{
 	}
 
 	private void gameTick_End(){
+		ticksInGame++;
 
 		AMGuiHelper.instance.tick();
 		EntityItemWatcher.instance.tick();
@@ -321,6 +325,7 @@ public class ClientTickHandler{
 
 	@SubscribeEvent
 	public void onClientTick(TickEvent.ClientTickEvent event){
+		if (AMCore.proxy instanceof ClientProxy) ((ClientProxy)AMCore.proxy).cullTask.requestCull = true;
 		if (event.phase == TickEvent.Phase.START){
 			GuiScreen guiscreen = Minecraft.getMinecraft().currentScreen;
 			if (guiscreen != null){
@@ -329,7 +334,7 @@ public class ClientTickHandler{
 			}
 		}else if (event.phase == TickEvent.Phase.END){
 			GuiScreen guiscreen = Minecraft.getMinecraft().currentScreen;
-			if (guiscreen != null){
+			if (guiscreen != null && guiscreen.doesGuiPauseGame()){
 			}else{
 				gameTick_End();
 			}
@@ -411,6 +416,7 @@ public class ClientTickHandler{
 		if (event.phase == TickEvent.Phase.END){
 			applyDeferredDimensionTransfers();
 		}
+		if (AMCore.proxy instanceof ClientProxy) ((ClientProxy)AMCore.proxy).cullTask.requestCull = true;
 	}
 
 	@SubscribeEvent

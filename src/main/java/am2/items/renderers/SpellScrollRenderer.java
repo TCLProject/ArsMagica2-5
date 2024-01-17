@@ -2,9 +2,11 @@ package am2.items.renderers;
 
 import am2.api.spell.ItemSpellBase;
 import am2.api.spell.enums.Affinity;
+import am2.entities.renderers.RenderPlayerSpecial;
 import am2.items.ItemSpellBook;
 import am2.particles.AMParticleIcons;
 import am2.spell.SpellUtils;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -28,11 +30,14 @@ import org.lwjgl.opengl.GL12;
 import java.util.HashMap;
 import java.util.Map;
 
+import static am2.entities.renderers.RenderPlayerSpecial.getEntityTextureFromOutside;
+import static net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixesMagicka.playerModelMap;
+
 public class SpellScrollRenderer implements IItemRenderer{
 
 	private static RenderItem renderItem = new RenderItem();
-	private final ModelBiped modelBipedMain;
-	private final Minecraft mc;
+	private static final ModelBiped modelBipedMain = new ModelBiped(0.0F);;
+	private static final Minecraft mc = Minecraft.getMinecraft();
 	private final Map<Affinity, IIcon> icons;
 	private boolean setupIcons = false;
 	private static final ResourceLocation rLoc = new ResourceLocation("textures/atlas/items.png");
@@ -40,8 +45,6 @@ public class SpellScrollRenderer implements IItemRenderer{
 	public static SpellScrollRenderer instance = new SpellScrollRenderer();
 
 	private SpellScrollRenderer(){
-		modelBipedMain = new ModelBiped(0.0F);
-		mc = Minecraft.getMinecraft();
 		icons = new HashMap<Affinity, IIcon>();
 	}
 
@@ -101,22 +104,24 @@ public class SpellScrollRenderer implements IItemRenderer{
 		float scale = 3f;
 		if (entity == mc.thePlayer && Minecraft.getMinecraft().gameSettings.thirdPersonView == 0){
 
-			GL11.glPushMatrix();
+			if (data.length != 3) {
+				GL11.glPushMatrix();
 
-			if (((EntityPlayer)entity).getItemInUseCount() > 0){
-				GL11.glRotatef(120, 1, 0, 1);
-				GL11.glRotatef(-10, 0, 1, 0);
-				GL11.glTranslatef(2f, 0f, 0.8f);
-			}else{
-				GL11.glTranslatef(3f, -1.2f, -2.5f);
-				GL11.glScalef(scale, scale, scale);
-				GL11.glRotatef(-45, 0, 1, 0);
+				if (((EntityPlayer) entity).getItemInUseCount() > 0) {
+					GL11.glRotatef(120, 1, 0, 1);
+					GL11.glRotatef(-10, 0, 1, 0);
+					GL11.glTranslatef(2f, 0f, 0.8f);
+				} else {
+					GL11.glTranslatef(3f, -1.2f, -2.5f);
+					GL11.glScalef(scale, scale, scale);
+					GL11.glRotatef(-45, 0, 1, 0);
+				}
+				RenderHelper.disableStandardItemLighting();
+				GL11.glTranslatef(0.6f, 0.0f, -0.4f);
+				RenderByAffinity(affinity);
+				RenderHelper.enableStandardItemLighting();
+				GL11.glPopMatrix();
 			}
-			RenderHelper.disableStandardItemLighting();
-			GL11.glTranslatef(0.6f, 0.0f, -0.4f);
-			RenderByAffinity(affinity);
-			RenderHelper.enableStandardItemLighting();
-			GL11.glPopMatrix();
 
 			if (includeArm){
 				if (entity instanceof EntityPlayer && ((EntityPlayer)entity).getItemInUseCount() > 0){
@@ -127,8 +132,13 @@ public class SpellScrollRenderer implements IItemRenderer{
 				GL11.glScalef(scale, scale, scale);
 				GL11.glTranslatef(0f, 0.6f, 1.1f);
 
-				Minecraft.getMinecraft().renderEngine.bindTexture(mc.thePlayer.getLocationSkin());
-				renderFirstPersonArm(mc.thePlayer);
+				if (entity instanceof EntityPlayer && playerModelMap.get(((EntityPlayer)entity).getCommandSenderName()) != null && playerModelMap.get(((EntityPlayer)entity).getCommandSenderName()).startsWith("maid")) {
+					Minecraft.getMinecraft().renderEngine.bindTexture(getEntityTextureFromOutside(mc.thePlayer));
+					renderFirstPersonArm(mc.thePlayer, getEntityTextureFromOutside(mc.thePlayer));
+				} else {
+					Minecraft.getMinecraft().renderEngine.bindTexture(mc.thePlayer.getLocationSkin());
+					renderFirstPersonArm(mc.thePlayer, mc.thePlayer.getLocationSkin());
+				}
 			}
 		}else{
 			if (entity instanceof EntityPlayer && ((EntityPlayer)entity).getItemInUseCount() > 0){
@@ -191,13 +201,13 @@ public class SpellScrollRenderer implements IItemRenderer{
 		t.draw();
 	}
 
-	private void renderFirstPersonArm(EntityClientPlayerMP player){
+	public static void renderFirstPersonArm(EntityClientPlayerMP player, ResourceLocation textureToBind){
 
 		GL11.glMatrixMode(GL11.GL_MODELVIEW);
 		float par1 = 0.5f;
 
 		float f1 = 1.0F;
-		EntityClientPlayerMP entityclientplayermp = this.mc.thePlayer;
+		EntityClientPlayerMP entityclientplayermp = mc.thePlayer;
 		float f2 = entityclientplayermp.prevRotationPitch + (entityclientplayermp.rotationPitch - entityclientplayermp.prevRotationPitch) * par1;
 		GL11.glPushMatrix();
 		GL11.glRotatef(f2, 1.0F, 0.0F, 0.0F);
@@ -209,9 +219,9 @@ public class SpellScrollRenderer implements IItemRenderer{
 		float f4 = entityplayersp.prevRenderArmYaw + (entityplayersp.renderArmYaw - entityplayersp.prevRenderArmYaw) * par1;
 		GL11.glRotatef((entityclientplayermp.rotationPitch - f3) * 0.1F, 1.0F, 0.0F, 0.0F);
 		GL11.glRotatef((entityclientplayermp.rotationYaw - f4) * 0.1F, 0.0F, 1.0F, 0.0F);
-		float f5 = this.mc.theWorld.getLightBrightness(MathHelper.floor_double(entityclientplayermp.posX), MathHelper.floor_double(entityclientplayermp.posY), MathHelper.floor_double(entityclientplayermp.posZ));
+		float f5 = mc.theWorld.getLightBrightness(MathHelper.floor_double(entityclientplayermp.posX), MathHelper.floor_double(entityclientplayermp.posY), MathHelper.floor_double(entityclientplayermp.posZ));
 		f5 = 1.0F;
-		int i = this.mc.theWorld.getLightBrightnessForSkyBlocks(MathHelper.floor_double(entityclientplayermp.posX), MathHelper.floor_double(entityclientplayermp.posY), MathHelper.floor_double(entityclientplayermp.posZ), 0);
+		int i = mc.theWorld.getLightBrightnessForSkyBlocks(MathHelper.floor_double(entityclientplayermp.posX), MathHelper.floor_double(entityclientplayermp.posY), MathHelper.floor_double(entityclientplayermp.posZ), 0);
 		int j = i % 65536;
 		int k = i / 65536;
 		OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, j / 1.0F, k / 1.0F);
@@ -234,7 +244,7 @@ public class SpellScrollRenderer implements IItemRenderer{
 		f6 = MathHelper.sin(MathHelper.sqrt_float(f7) * (float)Math.PI);
 		GL11.glRotatef(f6 * 70.0F, 0.0F, 1.0F, 0.0F);
 		GL11.glRotatef(-f8 * 20.0F, 0.0F, 0.0F, 1.0F);
-		this.mc.getTextureManager().bindTexture(entityclientplayermp.getLocationSkin());
+		mc.getTextureManager().bindTexture(textureToBind);
 		GL11.glTranslatef(-1.0F, 3.6F, 3.5F);
 		GL11.glRotatef(120.0F, 0.0F, 0.0F, 1.0F);
 		GL11.glRotatef(200.0F, 1.0F, 0.0F, 0.0F);
@@ -244,9 +254,9 @@ public class SpellScrollRenderer implements IItemRenderer{
 
 		float f = 1.0F;
 		GL11.glColor3f(f, f, f);
-		this.modelBipedMain.onGround = 0.0F;
-		this.modelBipedMain.setRotationAngles(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0625F, player);
-		this.modelBipedMain.bipedRightArm.render(0.0625F);
+		modelBipedMain.onGround = 0.0F;
+		modelBipedMain.setRotationAngles(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0625F, player);
+		modelBipedMain.bipedRightArm.render(0.0625F);
 
 		GL11.glPopMatrix();
 

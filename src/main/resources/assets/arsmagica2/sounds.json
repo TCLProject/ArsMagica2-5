@@ -29,6 +29,18 @@
 	    "misc/event/magic_level_up"
 	  ]
 	},
+	"misc.event.trumpet": {
+		"category": "ambient",
+		"sounds": [
+			"misc/event/trumpet"
+		]
+	},
+	"misc.event.trumpet2": {
+		"category": "ambient",
+		"sounds": [
+			"misc/event/trumpet2"
+		]
+	},
 	"misc.gateway.open": {
 	  "category": "block",
 	  "sounds": [
@@ -383,7 +395,30 @@
 	    "mob/winterguardian/launch_arm"
 	  ]
 	},
-	
+	"mob.boss.fightingblues": {
+		"category": "ambient",
+		"sounds": [
+			"mob/boss/fightingblues"
+		]
+	},
+	"mob.boss.greensymphony": {
+		"category": "ambient",
+		"sounds": [
+			"mob/boss/greensymphony"
+		]
+	},
+	"mob.boss.redrevival": {
+		"category": "ambient",
+		"sounds": [
+			"mob/boss/redrevival"
+		]
+	},
+	"mob.boss.canyouheartheend": {
+		"category": "ambient",
+		"sounds": [
+			"mob/boss/canyouheartheend"
+		]
+	},
 	
 	"spell.binding.cast": {
 	  "category": "ambient",
@@ -556,5 +591,25 @@
 	  "sounds": [
 	    "spell/summon/scary"
 	  ]
+	},
+	"crab.dig": {
+		"category": "neutral",
+		"sounds": ["crabdigging"]
+	},
+	"crab.steps": {
+		"category": "neutral",
+		"sounds": ["crabsteps"]
+	},
+	"crab.die": {
+		"category": "neutral",
+		"sounds": ["crabdied"]
+	},
+	"crab.hit": {
+		"category": "neutral",
+		"sounds": ["crabhit"]
+	},
+	"crab.attack": {
+		"category": "neutral",
+		"sounds": ["crabattack"]
 	}
 }

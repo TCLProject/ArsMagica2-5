@@ -43,6 +43,7 @@ public class AMConfig extends Configuration{
 	private final String KEY_SpawnHugeTrees = "SpawnHugeTrees";
 	private final String KEY_LowResParticles = "Low_Res_Particles";
 	private final String KEY_FrictionCoefficient = "FrictionCoefficient";
+	private final String KEY_DisableChronoDispel = "DisableChronoDispelCombo";
 
 	private final String KEY_MageVillagerProfessionID = "mage_villager_profession_id";
 
@@ -74,6 +75,8 @@ public class AMConfig extends Configuration{
 	private final String KEY_HazardousGateways = "Hazardous_Gateways";
 	private final String KEY_GlobalTime = "Global_Time_Manipulation";
 	private final String KEY_CanDryadsDespawn = "Can_Dryads_Despawn";
+	private final String KEY_InstabilityMultiplier = "InstabilityMultiplier";
+	private final String KEY_MaxRenderDistanceSquared = "MaxRenderDistanceSquared";
 
 	private final String KEY_ArmorXPInfusionFactor = "Armor_XP_Infusion_Factor";
 
@@ -109,7 +112,7 @@ public class AMConfig extends Configuration{
 	private final String KEY_SunstoneFreq = "SunstoneFrequency";
 
 	private final String KEY_MoonstoneFreq = "MoonstoneFrequency";
-	
+	private final String KEY_MaxReplace = "MaxBlocksReplacedByStructure";
 	/**
 	 * Beta Particles
 	 **/
@@ -178,8 +181,18 @@ public class AMConfig extends Configuration{
 
 	private final String KEY_EtheriumSpawnMode = "EtheriumSpawnMode";
 	private final String KEY_MobBlacklist = "EntityBlacklist";
-
+	private final String KEY_alternativeStart = "AlternativeStart";
 	private final String KEY_DebugVortex = "DebugSpatialVortex";
+	private final String KEY_VerboseStructureGen = "VerboseStructureGen";
+	private final String KEY_SOULBOUNDENCH = "SoulboundEnchantingTable";
+	private final String KEY_StructFreq = "StructureFrequency";
+	private final String KEY_SpecialEntityMultiplier = "SpecialEntitySpawnFrequencyMultiplier";
+	private final String KEY_blacklistAffectOres = "blacklistAffectOres";
+	private final String KEY_blacklistAffectFlora = "blacklistAffectFlora";
+	private final String KEY_blacklistAffectTrees = "blacklistAffectTrees";
+	private final String KEY_blacklistAffectPools = "blacklistAffectPools";
+
+
 	/**
 	 * End GUI Config
 	 **/
@@ -192,21 +205,26 @@ public class AMConfig extends Configuration{
 
 	private int GFXLevel;
 	private int EtherMode;
+	private int maxDisplacedBlocks;
 	private boolean PlayerSpellsDamageTerrain;
 	private boolean NPCSpellsDamageTerrain;
+	private boolean verboseStructureGen;
 	private float DamageMultiplier;
 	private boolean UseSpecialRenderers;
 	private boolean SpawnHugeTrees;
 	private boolean useDimWhitelist;
 	private boolean DisplayManaInInventory;
 	private boolean IsImbueEnabled;
+	private boolean soulboundEnch;
 	private boolean enableGlobalTime;
 	private boolean RetroWorldGen;
 	private boolean moonstoneMeteorsDestroyTerrain;
 	private boolean suggestSpellNames;
 	private boolean forgeSmeltsVillagers;
 	private boolean witchwoodLeafParticles;
+	private boolean disableChronoDispel;
 	private boolean debugVortex;
+	private double specialEntitySpawnMultiplier;
 	private int everstoneRepairRate;
 
 	private int witchwoodForestID;
@@ -214,7 +232,14 @@ public class AMConfig extends Configuration{
 
 	private int mmfDimensionID;
 
+	private boolean blacklistAffectOres;
+	private boolean blacklistAffectFlora;
+	private boolean blacklistAffectTrees;
+
+	private boolean blacklistAffectPools;
+
 	private float FrictionCoefficient;
+	private float instabilityMultiplier;
 
 	private int secondarySkillTreeTierCap;
 	private int mageVillagerProfessionID;
@@ -238,6 +263,7 @@ public class AMConfig extends Configuration{
 	private int AuraDelay;
 	private int AuraQuantity;
 	private double AuraSpeed;
+	private double MaxRenderDistanceSq;
 	private boolean AuraRandomColor;
 	private boolean AuraDefaultColor;
 	private double ArmorXPInfusionFactor;
@@ -280,6 +306,7 @@ public class AMConfig extends Configuration{
 	private boolean canDryadsDespawn;
 	
 	private int witchwoodFrequency;
+	private double structureFrequency;
 	private int poolFrequency;
 	private int wakebloomFrequency;
 	private int flowerGenAttempts;
@@ -288,6 +315,8 @@ public class AMConfig extends Configuration{
 	private int vinteumMaxHeight;
 	private int vinteumVeinSize;
 	private int vinteumFrequency;
+
+	private boolean alternativeStart;
 	
 	private int chimeriteMinHeight;
 	private int chimeriteMaxHeight;
@@ -320,17 +349,20 @@ public class AMConfig extends Configuration{
 
 		PlayerSpellsDamageTerrain = get(CATEGORY_GENERAL, KEY_PlayerSpellsDamageTerrain, true, "Set to false to prevent terrain damage from player-casted spells.").getBoolean(true);
 		NPCSpellsDamageTerrain = get(CATEGORY_GENERAL, KEY_NPCSpellsDamageTerrain, false, "Set to false to prevent terrain damage from NPC-casted spells.").getBoolean(false);
+		verboseStructureGen = get(CATEGORY_GENERAL, KEY_VerboseStructureGen, false, "Set to true to enable console output about the locations of generated structures.").getBoolean(false);
 
 		DamageMultiplier = (float)get(CATEGORY_GENERAL, KEY_DamageMultiplier, 1.0, "How much the damage in Ars Magica is scaled.").getDouble(1.0);
 
 		UseSpecialRenderers = get(CATEGORY_GENERAL, KEY_UseSpecialRenderers, true, "Render spell effects on equipped scrolls rather than the scroll itself (only applies to the in-game one, the one on your hotbar remains unchanged)").getBoolean(true);
 		enableGlobalTime = get(CATEGORY_GENERAL, KEY_GlobalTime, true, "Enable time manipulation spells working globally. If false, only the local parts retain functionality (similar to time-in-a-bottle).").getBoolean(true);
+		soulboundEnch = get(CATEGORY_GENERAL, KEY_SOULBOUNDENCH, false, "Enable acquiring the Soulbound enchantment through the enchanting table (ordinarily, it is obtainable through imbuements and boss items). WARNING: This is not the intended behavior - only a config added on request. Beware that if you DO enable it, it may NOT work correctly on custom inventories like Baubles.").getBoolean(false);
 		SpawnHugeTrees =  get(CATEGORY_GENERAL, KEY_SpawnHugeTrees, false, "Spawn big witchwood trees. If disabled, will only spawn normal witchwood trees. May cause minor lag on chunkloading.").getBoolean(false);
 
 		boolean def = !Loader.isModLoaded("NotEnoughItems");
 		DisplayManaInInventory = get(CATEGORY_GENERAL, KEY_DisplayManaInInventory, def, "This will toggle mana display on and off in your inventory.  Default 'O' key in game.").getBoolean(def);
 
 		FrictionCoefficient = (float)get(CATEGORY_GENERAL, KEY_FrictionCoefficient, 0.8, "This is the multiplier used to determine velocity lost when a spell projectile bounces. 0.0 is a complete stop, 1.0 is no loss.").getDouble(0.8);
+		instabilityMultiplier = (float)get(CATEGORY_GENERAL, KEY_InstabilityMultiplier, 1, "To what extend does instability affect the crafting process. 1 = the default values, 2 = twice as much instability, etc. 0 disables the instability mechanic altogether.").getDouble(1);
 
 		Property retroWorldGenProp = get(CATEGORY_GENERAL, KEY_RetroactiveWorldGen, false, "Set this to true to enable retroactive worldgen for Ars Magica structures and ores.  *WARNING* This may break your save!  Do a backup first!  Note: This will automatically turn off after running the game once.");
 		RetroWorldGen = retroWorldGenProp.getBoolean(false);
@@ -368,13 +400,19 @@ public class AMConfig extends Configuration{
 		showHudBars = get(CATEGORY_UI, KEY_ShowHUDBars, true).getBoolean(true);
 
 		EtherMode = get(CATEGORY_GENERAL, KEY_EtheriumSpawnMode, 3, "0 = spawn both large and small pools. 1 = spawn large pools only. 2 = spawn small pools only, 3 = no pools (use the new etherium gathering mechanic)").getInt();
+		maxDisplacedBlocks = get(CATEGORY_GENERAL, KEY_MaxReplace, 20, "The maximum number of blocks a structure may replace by air. Usually, higher number means more structures spawn but more of them look out of place; the opposite is true as well.").getInt();
 		witchwoodForestID = get(CATEGORY_GENERAL, KEY_WitchwoodForestBiomeID, 100, "The biome ID for Witchwood Forests. Change this if you run into issues with other mods that add biomes.").getInt();
 		mmfBiomeID = get(CATEGORY_GENERAL, KEY_MMFBiomeID, 110, "The biome ID for Moo Moo Farm. Change this if you run into issues with other mods that add biomes.").getInt();
 		mmfDimensionID = get(CATEGORY_GENERAL, KEY_MMFDimensionID, -31, "The dimension ID for Moo Moo Farm. Change this if you run into issues with other mods that add dimensions.").getInt();
 		witchwoodLeafParticles = get(CATEGORY_GENERAL, KEY_witchwoodLeavesFall, true, "Disable this if you experience low FPS in witchwood forests").getBoolean(true);
+		disableChronoDispel = get(CATEGORY_GENERAL, KEY_DisableChronoDispel, false, "Enable this if you have skill issues resulting in being unable to counter chrono+dispel. Config added due to popular demand. Note: Corruption of level data due to this spell has been fixed separately, independently of this config option.").getBoolean(false);
 		debugVortex = get(CATEGORY_GENERAL, KEY_DebugVortex, false, "Enable if you're having issues with spatial vortices and want to report it. This enables a lot of verbose output about their inner workings at all stages to make it easier for me to debug.").getBoolean(false);
 		enableWitchwoodForest = get(CATEGORY_GENERAL, KEY_EnableWitchwoodForest, true, "Disable this if you prefer the witchwood forest to not generate").getBoolean(true);
 		witchwoodForestRarity = get(CATEGORY_GENERAL, KEY_WitchwoodForestRarity, 6, "Sets how rare witchwood forests are.  Lower is more rare.").getInt();
+		blacklistAffectOres = get(CATEGORY_GENERAL, KEY_blacklistAffectOres, true, "Should Dimension Worldgen Blacklists apply to ores?").getBoolean(true);
+		blacklistAffectFlora = get(CATEGORY_GENERAL, KEY_blacklistAffectFlora, true, "Should Dimension Worldgen Blacklists apply to flora?").getBoolean(true);
+		blacklistAffectTrees = get(CATEGORY_GENERAL, KEY_blacklistAffectTrees, true, "Should Dimension Worldgen Blacklists apply to trees?").getBoolean(true);
+		blacklistAffectPools = get(CATEGORY_GENERAL, KEY_blacklistAffectPools, true, "Should Dimension Worldgen Blacklists apply to essence pools>").getBoolean(true);
 
 		allowCreativeTargets = get(CATEGORY_GENERAL, KEY_allowCreativeTargets, true, "Disable this to prevent spell effects on creative players").getBoolean(true);
 
@@ -385,11 +423,12 @@ public class AMConfig extends Configuration{
 		forgeSmeltsVillagers = get(CATEGORY_GENERAL, KEY_ForgeSmeltsVillagers, true, "Set this to true to have the forge component smelt villagers into emeralds.  This counts as an attack and lowers your reputation.").getBoolean(true);
 
 		everstoneRepairRate = get(CATEGORY_GENERAL, KEY_EverstoneRepairRate, 180, "The time taken, in ticks, for an everstone to repair after breaking.").getInt();
+		specialEntitySpawnMultiplier = get(CATEGORY_GENERAL, KEY_SpecialEntityMultiplier, 1, "Use this to make mobs using the new special spawning mechanism spawn less often or more often. e.g. 0.1 = 1/10th of the mobs, 2 = twice the mobs.").getDouble();
 
 		stagedCompendium = get(CATEGORY_GENERAL, KEY_StagedCompendium, true, "Set this to false to have the compendium show everything, and not unlock as you go.").getBoolean(true);
 
 		colourblindMode = get(CATEGORY_GENERAL, KEY_ColourblindMode, false, "Set this to true to have AM2 list out colours for skill points and essence types rather than showing them as a colour.").getBoolean(false);
-
+		alternativeStart = get(CATEGORY_GENERAL, KEY_alternativeStart, false, "Arcane Compendium creation requires Witchwood Trees instead of Ethereum Lakes").getBoolean(false);
 		candlesAreRovingLights = get(CATEGORY_GENERAL, KEY_CandlesAreRovingLights, true, "Set this to false to disable candles being able to act as roving lights, which improves performance.").getBoolean(true);
 
 		allowCompendiumUpdates = get(CATEGORY_GENERAL, KEY_AllowCompendiumUpdates, true, "If true, AM2 will automatically download compendium updates when available for your mod version.").getBoolean(true);
@@ -400,6 +439,7 @@ public class AMConfig extends Configuration{
 		hazardousGateways = get(CATEGORY_GENERAL, KEY_HazardousGateways, true, "Set this to false in order to disable gateways sending you partial distances if you don't have enough power.").getBoolean(true);
 
 		ArmorXPInfusionFactor = get(CATEGORY_GENERAL, KEY_ArmorXPInfusionFactor, 1.0, "Alter this to change the rate at which armor XP infuses.").getDouble();
+		structureFrequency = get(CATEGORY_GENERAL, KEY_StructFreq, 1.0, "Alter this to change the rate at which structures spawn (higher=more).").getDouble();
 		disarmAffectsPlayers = get(CATEGORY_GENERAL, KEY_DisarmAffectsPlayers, true, "If false, disarm won't work on players.").getBoolean(true);
 		manaCap = get(CATEGORY_GENERAL, KEY_ManaCap, 0, "Sets the maximum mana a player can have (0 for no cap)").getDouble(0);
 
@@ -528,6 +568,7 @@ public class AMConfig extends Configuration{
 		AuraQuantity = get(CATEGORY_BETA, KEY_AuraQuanity, 1).getInt(1);
 		AuraDelay = get(CATEGORY_BETA, KEY_AuraDelay, 5).getInt(5);
 		AuraSpeed = get(CATEGORY_BETA, KEY_AuraSpeed, 0.02D).getDouble(0.02D);
+		MaxRenderDistanceSq = get(CATEGORY_BETA, KEY_MaxRenderDistanceSquared, 4096.0D, "The square of the maximum distance from the player at which special VFX can render. The default setting of 4096 translates to a 64 block radius.").getDouble(4096.0D);
 		AuraRandomColor = get(CATEGORY_BETA, KEY_AuraColorRandomize, true).getBoolean(true);
 		AuraDefaultColor = get(CATEGORY_BETA, KEY_AuraColorDefault, true).getBoolean(true);
 
@@ -559,8 +600,14 @@ public class AMConfig extends Configuration{
 
 	public int spawnEtherMode() { return EtherMode; };
 
+	public int getMaxDisplacedBlocks() { return maxDisplacedBlocks; };
+
 	public boolean NPCSpellsDamageTerrain(){
 		return NPCSpellsDamageTerrain;
+	}
+
+	public boolean isVerboseStructureGenEnabled(){
+		return verboseStructureGen;
 	}
 
 	public boolean PlayerSpellsDamageTerrain(){
@@ -595,12 +642,20 @@ public class AMConfig extends Configuration{
 		return enableGlobalTime;
 	}
 
+	public boolean isSoulboundEnchEnabledAtTable(){
+		return soulboundEnch;
+	}
+
 	public boolean displayManaInInventory(){
 		return DisplayManaInInventory;
 	}
 
 	public double getFrictionCoefficient(){
 		return FrictionCoefficient;
+	}
+
+	public double getInstabilityMultiplier(){
+		return instabilityMultiplier;
 	}
 
 	public boolean retroactiveWorldgen(){
@@ -699,6 +754,20 @@ public class AMConfig extends Configuration{
 		return worldgenWhitelist;
 	}
 
+	public boolean BlacklistAffectOres(){
+		return this.blacklistAffectOres;
+	}
+
+	public boolean BlacklistAffectFlora(){
+		return this.blacklistAffectFlora;
+	}
+	public boolean BlacklistAffectTrees(){
+		return this.blacklistAffectTrees;
+	}
+	public boolean BlacklistAffectPools(){
+		return this.blacklistAffectPools;
+	}
+
 	public int[] getMobBlacklist(){
 		return mobBlacklist;
 	}
@@ -723,6 +792,10 @@ public class AMConfig extends Configuration{
 		return everstoneRepairRate;
 	}
 
+	public double getSpecialEntitySpawnMultiplier(){
+		return specialEntitySpawnMultiplier;
+	}
+
 	public boolean showHudMinimally(){
 		return showHudMinimally;
 	}
@@ -742,6 +815,11 @@ public class AMConfig extends Configuration{
 	public boolean witchwoodLeafPFX(){
 		return witchwoodLeafParticles;
 	}
+
+	public boolean isChronoDispelDisabled(){
+		return disableChronoDispel;
+	}
+
 
 	public boolean colourblindMode(){
 		return colourblindMode;
@@ -787,6 +865,9 @@ public class AMConfig extends Configuration{
 		return savePowerOnWorldSave;
 	}
 
+	public boolean isAlternativeStart(){
+		return alternativeStart;
+	}
 
 	public boolean canDraydsDespawn(){
 		return canDryadsDespawn;
@@ -834,6 +915,10 @@ public class AMConfig extends Configuration{
 	
 	public int getPoolFrequency(){
 		return this.poolFrequency;
+	}
+
+	public double getStructureFrequency(){
+		return this.structureFrequency;
 	}
 	
 	public int getWakebloomFrequency(){
@@ -952,10 +1037,13 @@ public class AMConfig extends Configuration{
 		return (float)AuraSpeed;
 	}
 
+	public double getMaxRenderDistanceSq(){
+		return MaxRenderDistanceSq;
+	}
+
 	public float getAuraAlpha(){
 		return AuraAlpha;
 	}
-
 
 	//====================================================================================
 	// Getters - Direct

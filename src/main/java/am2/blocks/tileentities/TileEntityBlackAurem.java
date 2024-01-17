@@ -3,6 +3,8 @@ package am2.blocks.tileentities;
 import am2.AMCore;
 import am2.api.blocks.MultiblockStructureDefinition;
 import am2.api.blocks.MultiblockStructureDefinition.StructureGroup;
+import am2.api.illeffect.BadThingTypes;
+import am2.api.illeffect.IllEffectSeverity;
 import am2.api.math.AMVector3;
 import am2.api.power.PowerTypes;
 import am2.blocks.BlocksCommonProxy;
@@ -10,6 +12,7 @@ import am2.buffs.BuffEffectManaRegen;
 import am2.buffs.BuffList;
 import am2.damage.DamageSources;
 import am2.entities.*;
+import am2.illeffect.IllEffectsManager;
 import am2.multiblock.IMultiblockStructureController;
 import am2.particles.AMLineArc;
 import am2.power.PowerNodeRegistry;
@@ -221,11 +224,10 @@ public class TileEntityBlackAurem extends TileEntityObelisk implements IMultiblo
 				}
 			}
 
-			//TODO:
-			/*if (rand.nextDouble() < (this.getCharge() / this.getCapacity()) * 0.01) {
-					int maxSev = (int)Math.ceil((this.getCharge() / this.getCapacity()) * 2) + rand.nextInt(2);
-					IllEffectsManager.instance.ApplyRandomBadThing(this, IllEffectSeverity.values()[maxSev], BadThingTypes.DARKNEXUS);
-				}*/
+			if (worldObj.rand.nextInt(1000 * (int)(10-((this.getPower(PowerTypes.DARK) / this.getCapacity()) * 9))) == 0) { // 1 in 1000 at max capacity, 1 in 10,000 at min capacity
+				int maxSev = (int)Math.ceil((this.getPower(PowerTypes.DARK) / this.getCapacity()) * 2) + worldObj.rand.nextInt(2);
+				IllEffectsManager.instance.ApplyRandomBadThing(this, IllEffectSeverity.values()[maxSev], BadThingTypes.DARKNEXUS);
+			}
 		}
 
 		super.callSuperUpdate();

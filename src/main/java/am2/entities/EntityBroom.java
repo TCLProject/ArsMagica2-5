@@ -10,6 +10,7 @@ import am2.particles.AMParticle;
 import am2.particles.ParticleFadeOut;
 import am2.particles.ParticleFloatUpward;
 import am2.utility.InventoryUtilities;
+import net.minecraft.block.Block;
 import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.ai.EntityAISwimming;
 import net.minecraft.entity.item.EntityItem;
@@ -93,7 +94,7 @@ public class EntityBroom extends EntityCreature{
 			moveCounter += 0.3f;
 			moveRotation = (float)Math.sin(moveCounter) - (float)Math.sin((moveCounter - 1));
 			if (((int)(moveCounter)) % 6 == 0){
-				//TODO: worldObj.playSoundAtEntity(this, .soundGrassFootstep.stepSoundName, 10.6f, worldObj.rand.nextFloat());
+				worldObj.playSoundAtEntity(this, Block.soundTypeGrass.getStepResourcePath(), Block.soundTypeGrass.getVolume() + 0.5f, worldObj.rand.nextFloat());
 			}
 		}else{
 			moveCounter = 3.14f / 2f;

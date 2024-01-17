@@ -189,6 +189,7 @@ public class PowerNodeCache{
 	public void onWorldUnload(WorldEvent.Unload event){
 		World world = event.world;
 		saveWorldToFile(world);
+		if (event.world.provider.dimensionId == 0) CustomWorldData.saveAllWorldData(); // if the overworld is being unloaded, the server is being shut down (logically)
 	}
 
 	private void cacheToFile(World world, RegionCoordinates coords){

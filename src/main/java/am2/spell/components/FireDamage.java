@@ -1,6 +1,7 @@
 package am2.spell.components;
 
 import am2.AMCore;
+import am2.LogHelper;
 import am2.RitualShapeHelper;
 import am2.api.blocks.MultiblockStructureDefinition;
 import am2.api.power.IPowerNode;
@@ -9,6 +10,7 @@ import am2.api.spell.component.interfaces.ISpellComponent;
 import am2.api.spell.enums.Affinity;
 import am2.api.spell.enums.SpellModifiers;
 import am2.blocks.BlocksCommonProxy;
+import am2.damage.DamageSourceUnsummon;
 import am2.damage.DamageSources;
 import am2.entities.EntityDarkling;
 import am2.entities.EntityFireElemental;
@@ -17,19 +19,37 @@ import am2.particles.AMParticle;
 import am2.power.PowerNodeRegistry;
 import am2.spell.SpellHelper;
 import am2.spell.SpellUtils;
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.monster.EntityGhast;
 import net.minecraft.entity.monster.EntityPigZombie;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.EntityDamageSource;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+import org.apache.logging.log4j.Level;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.EnumSet;
 import java.util.Random;
 
 public class FireDamage implements ISpellComponent, IRitualInteraction{
+
+	public static Field recentlyHit;
+
+	static {
+		try {
+			recentlyHit = ReflectionHelper.findField(EntityLivingBase.class, "recentlyHit", "field_70718_bc");
+		} catch(Exception e){ }
+	}
 
 	@Override
 	public boolean applyEffectBlock(ItemStack stack, World world, int blockx, int blocky, int blockz, int blockFace, double impactX, double impactY, double impactZ, EntityLivingBase caster){
@@ -56,11 +76,57 @@ public class FireDamage implements ISpellComponent, IRitualInteraction{
 	@Override
 	public boolean applyEffectEntity(ItemStack stack, World world, EntityLivingBase caster, Entity target){
 		if (!(target instanceof EntityLivingBase)) return false;
+		EntityLivingBase elb = (EntityLivingBase) target;
 		float baseDamage = 6;
 		double damage = SpellUtils.instance.getModifiedDouble_Add(baseDamage, stack, caster, target, world, 0, SpellModifiers.DAMAGE);
 		if (isNetherMob(target))
 			return true;
+		boolean vampire = isElbVampire(elb);
+		if (vampire) {
+			causeUnblockableDamage(elb, damage);
+			return true;
+		}
 		return SpellHelper.instance.attackTargetSpecial(stack, target, DamageSources.causeEntityFireDamage(caster), SpellUtils.instance.modifyDamage(caster, (float)damage));
+	}
+
+	// not entirely unblockable, but close enough
+	public static void causeUnblockableDamage(EntityLivingBase elb, double damage) {
+		if(elb.worldObj.isRemote) return;
+		if (elb.getHealth() <= damage) {
+			try {
+				recentlyHit.setInt(elb, 60);
+			}
+			catch(Exception e){}
+			elb.func_110142_aN().func_94547_a(new DamageSourceUnsummon(), elb.getHealth(), elb.getHealth());
+			elb.setHealth(0);
+			elb.onDeath(new EntityDamageSource("hubris", elb).setFireDamage());
+		} else { // the setHealth function but without an opportunity to coremod into it
+			elb.getDataWatcher().updateObject(6, Float.valueOf(MathHelper.clamp_float(((float)(elb.getHealth() - damage)), 0.0F, elb.getMaxHealth())));
+		}
+	}
+
+	public static boolean isElbVampire(Entity entity) {
+		try {
+			Class<?> clazz = Class.forName("com.emoniph.witchery.util.CreatureUtil");
+			Method method = clazz.getMethod("isVampire", new Class<?>[]{Entity.class});
+			Object value = method.invoke(null, new Object[] {entity});
+			return (Boolean)value;
+		} catch (NoClassDefFoundError e) { // in theory not needed, but just in case
+		} catch (Exception e) { // witchery not found
+		}
+		return false;
+	}
+
+	public static boolean isElbWerewolf(Entity entity) {
+		try {
+			Class<?> clazz = Class.forName("com.emoniph.witchery.util.CreatureUtil");
+			Method method = clazz.getMethod("isWerewolf", new Class<?>[]{Entity.class});
+			Object value = method.invoke(null, new Object[] {entity});
+			return (Boolean)value;
+		} catch (NoClassDefFoundError e) { // in theory not needed, but just in case
+		} catch (Exception e) { // witchery not found
+		}
+		return false;
 	}
 
 	private boolean isNetherMob(Entity target){

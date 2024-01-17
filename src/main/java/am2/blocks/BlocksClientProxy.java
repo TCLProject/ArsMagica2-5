@@ -4,6 +4,8 @@ import am2.blocks.renderers.*;
 import am2.blocks.tileentities.*;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
+import net.tclproject.mysteriumlib.render.dae.hea3ven.colladamodel.client.model.test.BaseChestRenderer;
+import net.tclproject.mysteriumlib.render.dae.hea3ven.colladamodel.client.model.test.TileEntityPandorasChest;
 
 public class BlocksClientProxy extends BlocksCommonProxy{
 	public static TileEntityEssenceConduit essenceConduitInventoryRender;
@@ -79,5 +81,10 @@ public class BlocksClientProxy extends BlocksCommonProxy{
 		ClientRegistry.bindTileEntitySpecialRenderer(TileEntityCandle.class, new CandleRenderer());
 		ClientRegistry.bindTileEntitySpecialRenderer(TileEntityFlickerHabitat.class, new FlickerHabitatRenderer());
 		ClientRegistry.bindTileEntitySpecialRenderer(TileEntityOtherworldAura.class, new RenderOtherworldAura());
+		BaseChestRenderer pandorasChestRenderer = new BaseChestRenderer(
+				"pandoraschest:models/pandoras_chest_open.dae",
+				"pandoraschest:models/pandoras_chest_close.dae");
+		ClientRegistry.bindTileEntitySpecialRenderer(
+				TileEntityPandorasChest.class, pandorasChestRenderer);
 	}
 }

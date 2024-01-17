@@ -164,6 +164,11 @@ public class EntityNatureGuardian extends AM2Boss{
 			this.entityDropItem(new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_NATURE), 0.0f);
 		}
 
+		int h = rand.nextInt(10);
+		if (h < 4 && par1){
+			this.entityDropItem(new ItemStack(ItemsCommonProxy.recordReds), 0.0f);
+		}
+
 		i = rand.nextInt(10);
 
 		if (i < 3 && par1){
@@ -194,6 +199,11 @@ public class EntityNatureGuardian extends AM2Boss{
 	@Override
 	protected String getLivingSound(){
 		return "arsmagica2:mob.natureguardian.idle";
+	}
+
+	@Override
+	protected String getMusic(){
+		return "arsmagica2:mob.boss.redrevival";
 	}
 
 	@Override

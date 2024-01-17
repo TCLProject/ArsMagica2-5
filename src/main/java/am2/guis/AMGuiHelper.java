@@ -197,7 +197,6 @@ public class AMGuiHelper{
 	}
 
 	public static void OpenBookGUI(ItemStack stack){
-		// TODO Auto-generated method stub
 	}
 
 	public static void OpenCompendiumGui(ItemStack stack){

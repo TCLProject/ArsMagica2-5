@@ -7,6 +7,7 @@ import am2.particles.ParticleGrow;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.material.Material;
+import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -35,6 +36,18 @@ public class BlockMageLight extends AMSpecialRenderBlock{
 	@Override
 	public int tickRate(World par1World){
 		return 20 - 5 * AMCore.config.getGFXLevel();
+	}
+
+	@SideOnly(Side.CLIENT)
+	public boolean addDestroyEffects(World world, int x, int y, int z, int meta, EffectRenderer effectRenderer)
+	{
+		return world.getBlock(x, y, z) instanceof BlockMageLight; // if it's a magelight, don't render (return true)
+	}
+
+	@SideOnly(Side.CLIENT)
+	public boolean addHitEffects(World worldObj, MovingObjectPosition target, EffectRenderer effectRenderer)
+	{
+		return true; // don't do it
 	}
 
 	@Override

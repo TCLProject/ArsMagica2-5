@@ -140,64 +140,6 @@ public class TileEntityLectern extends TileEntityEnchantmentTable{
 
 		this.field_145929_l += (f - this.field_145929_l) * 0.9F;
 		this.field_145933_i += this.field_145929_l;
-
-		//TODO:
-			/*this.bookSpreadPrev = this.bookSpread;
-		this.bookRotationPrev = this.bookRotation2;
-		this.bookSpread += 0.1F;
-
-		if (this.bookSpread < 0.5F || rand.nextInt(40) == 0)
-		{
-			float f = this.field_70373_d;
-
-			do
-			{
-				this.field_70373_d += rand.nextInt(4) - rand.nextInt(4);
-			}
-			while (f == this.field_70373_d);
-		}
-
-		float f1;
-
-		for (f1 = this.bookRotation - this.bookRotation2; f1 >= (float)Math.PI; f1 -= ((float)Math.PI * 2F))
-		{
-			;
-		}
-
-		while (f1 < -(float)Math.PI)
-		{
-			f1 += ((float)Math.PI * 2F);
-		}
-
-		this.bookRotation2 += f1 * 0.4F;
-
-		if (this.bookSpread < 0.0F)
-		{
-			this.bookSpread = 0.0F;
-		}
-
-		if (this.bookSpread > 1.0F)
-		{
-			this.bookSpread = 1.0F;
-		}
-
-		++this.tickCount;
-		this.pageFlipPrev = this.pageFlip;
-		float f2 = (this.field_70373_d - this.pageFlip) * 0.4F;
-		float f3 = 0.02F;
-
-		if (f2 < -f3)
-		{
-			f2 = -f3;
-		}
-
-		if (f2 > f3)
-		{
-			f2 = f3;
-		}
-
-		this.field_70374_e += (f2 - this.field_70374_e) * 1.1F;
-		this.pageFlip += this.field_70374_e;*/
 	}
 
 	@Override

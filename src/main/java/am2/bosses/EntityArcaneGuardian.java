@@ -214,6 +214,11 @@ public class EntityArcaneGuardian extends AM2Boss{
 
 		int i = rand.nextInt(4);
 
+		int h = rand.nextInt(10);
+		if (h < 4 && par1){
+			this.entityDropItem(new ItemStack(ItemsCommonProxy.recordGreens), 0.0f);
+		}
+
 		for (int j = 0; j < i; j++){
 			this.entityDropItem(new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_ARCANE), 0.0f);
 		}
@@ -243,6 +248,11 @@ public class EntityArcaneGuardian extends AM2Boss{
 	@Override
 	protected String getLivingSound(){
 		return "arsmagica2:mob.arcaneguardian.idle";
+	}
+
+	@Override
+	protected String getMusic(){
+		return "arsmagica2:mob.boss.greensymphony";
 	}
 
 	@Override

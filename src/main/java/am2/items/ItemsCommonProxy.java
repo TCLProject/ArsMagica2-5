@@ -29,6 +29,7 @@ import net.minecraftforge.common.util.EnumHelper;
 import net.minecraftforge.oredict.OreDictionary;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 import net.minecraftforge.oredict.ShapelessOreRecipe;
+import net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixesMagicka;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,9 @@ public class ItemsCommonProxy{
 
 	//Core Crafting Components
 	public static ItemOre itemOre;
+
+	//various technological intermediates
+	public static ItemTechJunk techJunk;
 
 	//Essences
 	public static ItemEssence essence;
@@ -132,7 +136,13 @@ public class ItemsCommonProxy{
 	public static ItemLifeWard lifeWard;
 	public static Item evilBook;
 	public static Item woodenLeg;
+	public static Item testItem;
 	public static ItemHellCowHorn cowHorn;
+
+	public static Item recordBlues;
+	public static Item recordGreens;
+	public static Item recordReds;
+	public static Item recordEnder;
 
 	//--------------------------------------------------------------
 	// Spells
@@ -170,6 +180,8 @@ public class ItemsCommonProxy{
 	public static Item BoundLeggings;
 	public static Item BoundBoots;
 
+	public static ItemTrumpet trumpet;
+
 	public static ItemManaStone manaStone;
 	public static ItemSoulspike soulspike;
 	public static ItemEtheriumExtractor etheriumExtractor;
@@ -202,6 +214,7 @@ public class ItemsCommonProxy{
 	public static ItemStack waterOrbsEnchanted;
 	public static ItemStack lightningCharmEnchanted;
 	public static ItemStack lifeWardEnchanted;
+	public static AMCreativeTab summonsTab;
 
 	private final ArrayList<Item> arsMagicaItemsList;
 
@@ -209,6 +222,7 @@ public class ItemsCommonProxy{
 
 	public ItemsCommonProxy(){
 		itemTab = new AMCreativeTab("Ars Magica Items");
+		summonsTab = new AMCreativeTab("Ars Magica Summons [WIP]");
 		arsMagicaItemsList = new ArrayList<Item>();
 	}
 
@@ -220,7 +234,13 @@ public class ItemsCommonProxy{
 
 		LogHelper.trace("Instantiating Items");
 
+		// --  WIP  -- //
+		// TODO: REMOVE
+		testItem = new ItemTestItem().setUnlocalizedName("arsmagica2:test_item").setTextureName("arsmagica2:empty").setCreativeTab(summonsTab);
+		// --  WIP  -- //
+
 		itemOre = (ItemOre)new ItemOre().setUnlocalizedAndTextureName("arsmagica2:itemOre").setCreativeTab(itemTab);
+		techJunk = (ItemTechJunk) new ItemTechJunk().setUnlocalizedAndTextureName("arsmagica2:techJunk").setCreativeTab(itemTab);
 		essence = (ItemEssence)new ItemEssence().setUnlocalizedAndTextureName("arsmagica2:essence").setCreativeTab(itemTab);
 		spellBook = (ItemSpellBook)new ItemSpellBook().setUnlocalizedAndTextureName("arsmagica2:spell_book").setCreativeTab(itemTab);
 		spellParchment = (ArsMagicaItem)new ArsMagicaItem().setUnlocalizedAndTextureName("arsmagica2:spell_parchment").setCreativeTab(itemTab);
@@ -273,6 +293,10 @@ public class ItemsCommonProxy{
 		mobFocus = (ItemMobFocus)new ItemMobFocus().setUnlocalizedAndTextureName("arsmagica2:monster_focus").setCreativeTab(itemTab);
 		itemFocus = (ItemItemFocus)new ItemItemFocus().setUnlocalizedAndTextureName("arsmagica2:item_focus").setCreativeTab(itemTab);
 		creatureFocus = (ItemCreatureFocus)new ItemCreatureFocus().setUnlocalizedAndTextureName("arsmagica2:creature_focus").setCreativeTab(itemTab);
+		recordBlues = (ItemBossRecord)new ItemBossRecord("fightingblues").setUnlocalizedName("arsmagica2:record1").setCreativeTab(itemTab);
+		recordGreens = (ItemBossRecord)new ItemBossRecord("greensymphony").setUnlocalizedName("arsmagica2:record2").setCreativeTab(itemTab);
+		recordReds = (ItemBossRecord)new ItemBossRecord("redrevival").setUnlocalizedName("arsmagica2:record3").setCreativeTab(itemTab);
+		recordEnder = (ItemBossRecord)new ItemBossRecord("canyouheartheend").setUnlocalizedName("arsmagica2:record4").setCreativeTab(itemTab);
 		BoundHoe = new ItemBoundHoe(ToolMaterial.IRON).setUnlocalizedAndTextureName("arsmagica2:bound_hoe");
 		BoundAxe = new ItemBoundAxe(ToolMaterial.IRON).setUnlocalizedAndTextureName("arsmagica2:bound_axe");
 		BoundPickaxe = new ItemBoundPickaxe(ToolMaterial.IRON).setUnlocalizedAndTextureName("arsmagica2:bound_pickaxe");
@@ -291,10 +315,9 @@ public class ItemsCommonProxy{
 		crystalWrench = (ItemCrystalWrench)new ItemCrystalWrench().setUnlocalizedAndTextureName("arsmagica2:crystal_wrench").setCreativeTab(itemTab);
 		itemArcaneFishingRod = (ItemArcaneFishingRod) new ItemArcaneFishingRod().setUnlocalizedAndTextureName("arsmagica2:arcane_rod").setCreativeTab(itemTab);
 		itemInfernalFishingRod = (ItemInfernalFishingRod) new ItemInfernalFishingRod().setUnlocalizedAndTextureName("arsmagica2:infernal_rod").setCreativeTab(itemTab);
-		spawnEgg = (AMSpawnEgg)new AMSpawnEgg().setUnlocalizedAndTextureName("am_spawnegg").setCreativeTab(itemTab);
+		spawnEgg = (AMSpawnEgg)new AMSpawnEgg().setUnlocalizedAndTextureName("am_spawnegg").setCreativeTab(summonsTab);
 		arcaneCompendium = (ItemArcaneCompendium)new ItemArcaneCompendium().setUnlocalizedAndTextureName("arsmagica2:ArcaneCompendium").setCreativeTab(itemTab);
 		spell_component = new ItemSpellPart();
-		//TODO: Item.itemsList[BlocksCommonProxy.wakebloom.blockID] = new ItemWakebloom(BlocksCommonProxy.wakebloom.blockID - 256).setUnlocalizedName("arsmagica2:wakebloom").setCreativeTab(BlocksCommonProxy.blockTab);
 		crystalPhylactery = (ItemCrystalPhylactery)new ItemCrystalPhylactery().setUnlocalizedAndTextureName("arsmagica2:crystal_phylactery").setCreativeTab(itemTab);
 		itemAMBucket = (ItemAMBucket)new ItemAMBucket().setUnlocalizedAndTextureName("arsmagica2:liquidEssenceBucket").setCreativeTab(itemTab);
 		scythe = (ItemNatureGuardianSickle)new ItemNatureGuardianSickle().setUnlocalizedName("arsmagica2:nature_scythe").setCreativeTab(itemTab);
@@ -304,6 +327,7 @@ public class ItemsCommonProxy{
 		spellStaffMagitech = (ItemSpellStaff)new ItemSpellStaff(0, -1).setStaffHeadIndex(3).setUnlocalizedAndTextureName("arsmagica2:spell_staff_magitech").setCreativeTab(itemTab);
 		liquidEssenceBottle = (ItemLiquidEssenceBottle)new ItemLiquidEssenceBottle().setUnlocalizedAndTextureName("arsmagica2:mana_boost_potion").setCreativeTab(itemTab);
 		evilBook = new Item().setUnlocalizedName("arsmagica2:evilBook").setTextureName("arsmagica2:evilBook").setCreativeTab(itemTab);
+		trumpet = (ItemTrumpet)new ItemTrumpet().setUnlocalizedAndTextureName("arsmagica2:trumpet").setCreativeTab(itemTab);
 		woodenLeg = new Item().setUnlocalizedName("arsmagica2:woodenLeg").setTextureName("arsmagica2:woodenLeg").setCreativeTab(itemTab);
 		boundCatalystHelmet = new Item().setUnlocalizedName("arsmagica2:bound_helmet_catalyst").setTextureName("arsmagica2:bound_helmet_catalyst").setCreativeTab(itemTab);
 		boundCatalystArmor =new Item().setUnlocalizedName("arsmagica2:bound_chestplate_catalyst").setTextureName("arsmagica2:bound_chestplate_catalyst").setCreativeTab(itemTab);
@@ -357,6 +381,7 @@ public class ItemsCommonProxy{
 		RegisterItems();
 
 		itemTab.setIconItemIndex(itemOre);
+		summonsTab.setIconItemIndex(mobFocus);
 
 		Affinity.NONE.setRepresentItem(essence, essence.META_BASE_CORE);
 		Affinity.AIR.setRepresentItem(essence, essence.META_AIR);
@@ -390,7 +415,9 @@ public class ItemsCommonProxy{
 
 	private void RegisterItems(){
 		registerItem(spell, "spellBase");
+		registerItem(testItem, "testItem");
 		registerItem(itemOre, "itemOre");
+		registerItem(techJunk, "techJunk");
 		//Essences
 		registerItem(essence, "essence");
 		registerItem(essenceBag, "essenceBag");
@@ -459,6 +486,11 @@ public class ItemsCommonProxy{
 		registerItem(archmageLeggings, "ArchmageLeggings");
 		registerItem(archmageBoots, "ArchmageBoots");
 
+		registerItem(recordBlues, "recordBlues");
+		registerItem(recordGreens, "recordGreens");
+		registerItem(recordReds, "recordReds");
+		registerItem(recordEnder, "recordEnder");
+
 		//bound items
 		registerItem(BoundHoe, "BoundHoeNor");
 		registerItem(BoundShovel, "BoundShovelNor");
@@ -492,6 +524,7 @@ public class ItemsCommonProxy{
 		registerItem(bindingCatalyst, "bindingCatalyst");
 
 		registerItem(evilBook, "evilBook");
+		registerItem(trumpet, "trumpet");
 		registerItem(woodenLeg, "woodenLeg");
 		registerItem(cowHorn, "cowHorn");
 
@@ -524,6 +557,123 @@ public class ItemsCommonProxy{
 		registerItem(astrocalis, "astrocalis");
 		registerItem(casparazoid, "casparazoid");
 		registerItem(inscriptionUpgrade, "inscriptionUpgrade");
+
+		// tech modIDs registration
+		MysteriumPatchesFixesMagicka.addTechModToList("Mekanism");
+		MysteriumPatchesFixesMagicka.addTechModToList("MekanismTools");
+		MysteriumPatchesFixesMagicka.addTechModToList("MekanismGenerators");
+		MysteriumPatchesFixesMagicka.addTechModToList("ThermalExpansion");
+		MysteriumPatchesFixesMagicka.addTechModToList("ThermalDynamics");
+		MysteriumPatchesFixesMagicka.addTechModToList("ThermalFoundation");
+		MysteriumPatchesFixesMagicka.addTechModToList("IC2");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Core");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Silicon");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Robotics");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Energy");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Transport");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Factory");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Builders");
+		MysteriumPatchesFixesMagicka.addTechModToList("BuildCraft|Compat");
+		MysteriumPatchesFixesMagicka.addTechModToList("appliedenergistics2");
+		MysteriumPatchesFixesMagicka.addTechModToList("Railcraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("qCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("powersuits");
+		MysteriumPatchesFixesMagicka.addTechModToList("minechem");
+		MysteriumPatchesFixesMagicka.addTechModToList("Forestry");
+		MysteriumPatchesFixesMagicka.addTechModToList("GraviSuite");
+		MysteriumPatchesFixesMagicka.addTechModToList("gregtech_addon");
+		MysteriumPatchesFixesMagicka.addTechModToList("RedstoneArsenal");
+		MysteriumPatchesFixesMagicka.addTechModToList("rftools");
+		MysteriumPatchesFixesMagicka.addTechModToList("WarpDrive");
+		MysteriumPatchesFixesMagicka.addTechModToList("NuclearCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("NVLWarpdriveExtensions");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatAppliedEnergistics");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatAtum");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatBackTools");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatBuildCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatChococraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatExtraBiomes");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatForestry");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatForgeMicroblock");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatIC2");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatProjRed");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatRailcraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatSufficientBiomes");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatThaumcraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatThermalExpansion");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatTConstruct");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatTwilightForest");
+		MysteriumPatchesFixesMagicka.addTechModToList("MineFactoryReloaded|CompatVanilla");
+		MysteriumPatchesFixesMagicka.addTechModToList("OpenComputers");
+		MysteriumPatchesFixesMagicka.addTechModToList("openmodularturrets");
+		MysteriumPatchesFixesMagicka.addTechModToList("opensecurity");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjRed|Core");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjRed|Compatibility");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjRed|Integration");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjRed|Transmission");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjRed|Illumination");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjRed|Expansion");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjRed|Transportation");
+		MysteriumPatchesFixesMagicka.addTechModToList("StevesCarts");
+		MysteriumPatchesFixesMagicka.addTechModToList("compactkineticgenerators");
+		MysteriumPatchesFixesMagicka.addTechModToList("CompactMachines");
+		MysteriumPatchesFixesMagicka.addTechModToList("CompactSolars");
+		MysteriumPatchesFixesMagicka.addTechModToList("gendustry");
+		MysteriumPatchesFixesMagicka.addTechModToList("gtnhlib");
+		MysteriumPatchesFixesMagicka.addTechModToList("GregTech");
+		MysteriumPatchesFixesMagicka.addTechModToList("gregtech");
+		MysteriumPatchesFixesMagicka.addTechModToList("qwertech");
+		MysteriumPatchesFixesMagicka.addTechModToList("IC2-Classic-Spmod");
+		MysteriumPatchesFixesMagicka.addTechModToList("IC2NuclearControl");
+		MysteriumPatchesFixesMagicka.addTechModToList("ihl");
+		MysteriumPatchesFixesMagicka.addTechModToList("ImmersiveEngineering");
+		MysteriumPatchesFixesMagicka.addTechModToList("rfdrills");
+		MysteriumPatchesFixesMagicka.addTechModToList("mo");
+		MysteriumPatchesFixesMagicka.addTechModToList("matteroverdrive");
+		MysteriumPatchesFixesMagicka.addTechModToList("ExtraUtilities");
+		MysteriumPatchesFixesMagicka.addTechModToList("EnderIO");
+		MysteriumPatchesFixesMagicka.addTechModToList("Magneticraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("BigReactors");
+		MysteriumPatchesFixesMagicka.addTechModToList("hbm");
+		MysteriumPatchesFixesMagicka.addTechModToList("Eln");
+		MysteriumPatchesFixesMagicka.addTechModToList("RotaryCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("ReactorCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("ElectriCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("voltzengine");
+		MysteriumPatchesFixesMagicka.addTechModToList("mffs");
+		MysteriumPatchesFixesMagicka.addTechModToList("icbmclassic");
+		MysteriumPatchesFixesMagicka.addTechModToList("atomicscience");
+		MysteriumPatchesFixesMagicka.addTechModToList("ComputerCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("ActuallyAdditions");
+		MysteriumPatchesFixesMagicka.addTechModToList("PneumaticCraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("Steamcraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("steamcraft2");
+		MysteriumPatchesFixesMagicka.addTechModToList("DraconicEvolution");
+		MysteriumPatchesFixesMagicka.addTechModToList("Redpower");
+		MysteriumPatchesFixesMagicka.addTechModToList("bluepower");
+		MysteriumPatchesFixesMagicka.addTechModToList("progressiveautomation");
+		MysteriumPatchesFixesMagicka.addTechModToList("factorization");
+		MysteriumPatchesFixesMagicka.addTechModToList("OpenBlocks");
+		MysteriumPatchesFixesMagicka.addTechModToList("WarpDriveCore");
+		MysteriumPatchesFixesMagicka.addTechModToList("GalacticraftCore");
+		MysteriumPatchesFixesMagicka.addTechModToList("GalacticraftMars");
+		MysteriumPatchesFixesMagicka.addTechModToList("GalaxySpace");
+		MysteriumPatchesFixesMagicka.addTechModToList("advancedRocketry");
+		MysteriumPatchesFixesMagicka.addTechModToList("ExtraPlanets");
+		MysteriumPatchesFixesMagicka.addTechModToList("ProjectE");
+		MysteriumPatchesFixesMagicka.addTechModToList("gregapi");
+		MysteriumPatchesFixesMagicka.addTechModToList("gregapi_post");
+		MysteriumPatchesFixesMagicka.addTechModToList("lightningcraft");
+		MysteriumPatchesFixesMagicka.addTechModToList("QuarryPlus");
+		MysteriumPatchesFixesMagicka.addTechModToList("nuclearscience");
+		MysteriumPatchesFixesMagicka.addTechModToList("nuclearphysics");
+		MysteriumPatchesFixesMagicka.addTechModToList("forcefields");
+		MysteriumPatchesFixesMagicka.addTechModToList("physica");
+		MysteriumPatchesFixesMagicka.addTechModToList("PortalGun");
+		MysteriumPatchesFixesMagicka.addTechModToList("portalgun");
+		MysteriumPatchesFixesMagicka.addTechModToList("refinedstorage");
+		MysteriumPatchesFixesMagicka.addTechModToList("tc");
 
 		//registerItem(boundBow, "boundBow");
 
@@ -775,6 +925,17 @@ public class ItemsCommonProxy{
 						Character.valueOf('G'), "ingotGold",
 						Character.valueOf('D'), "gemDiamond",
 						Character.valueOf('P'), "dustVinteum",
+				}));
+
+		//mana stone
+		GameRegistry.addRecipe(new ShapedOreRecipe(new ItemStack(trumpet),
+				new Object[]{
+						" GG",
+						"GVA",
+						" GG",
+						Character.valueOf('G'), "ingotGold",
+						Character.valueOf('A'), new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_AIR),
+						Character.valueOf('V'), "dustVinteum",
 				}));
 
 		//extractor

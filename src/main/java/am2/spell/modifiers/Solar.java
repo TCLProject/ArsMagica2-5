@@ -47,13 +47,13 @@ public class Solar implements ISpellModifier{
 	@Override
 	public float getManaCostMultiplier(ItemStack spellStack, int stage, int quantity, EntityLivingBase caster){
 		World world = caster.worldObj;
-		long time = world.getWorldTime();
 
 		float multiplier = 2.5f;
 
 		if (caster.dimension == -1)
 			multiplier = 1.5f;
-		else if (!world.provider.hasNoSky && time < 13000){
+		else if (!world.provider.hasNoSky && world.isDaytime()){
+			double time = world.getWorldTime() % 24000;
 			//Returns a decreasing value between 2.4 and 2.0 as it approaches midday.
 			multiplier = (float) Math.round((
 					1.0f + Math.exp(0.058 * (Math.abs((time - 6000)/1000)))

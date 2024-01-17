@@ -87,6 +87,10 @@ public abstract class TileEntityAMPower extends TileEntity implements IPowerNode
 		PowerNodeRegistry.For(this.worldObj).setPower(this, type, amount);
 	}
 
+	public float getPower(PowerTypes type){
+		return PowerNodeRegistry.For(this.worldObj).getPower(this, type);
+	}
+
 	@Override
 	public PowerTypes[] getValidPowerTypes(){
 		return PowerTypes.all();

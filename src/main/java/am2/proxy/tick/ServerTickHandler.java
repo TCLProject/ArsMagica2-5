@@ -1,8 +1,10 @@
 package am2.proxy.tick;
 
 import am2.AMCore;
+import am2.AMEventHandler;
 import am2.EntityItemWatcher;
 import am2.MeteorSpawnHelper;
+import am2.bosses.AM2Boss;
 import am2.bosses.BossSpawnHelper;
 import am2.items.ItemsCommonProxy;
 import am2.network.AMDataWriter;
@@ -11,21 +13,22 @@ import am2.network.AMPacketIDs;
 import am2.spell.SpellHelper;
 import am2.utility.DimensionUtilities;
 import am2.worldgen.RetroactiveWorldgenerator;
+import am2.worldgen.dynamic.DynamicBossWorldHelper;
+import am2.worldgen.dynamic.DynamicBossWorldProvider;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.World;
 import net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixesMagicka;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import static am2.AMEventHandler.tempCurseMap;
@@ -35,6 +38,7 @@ public class ServerTickHandler{
 
 	private boolean firstTick = true;
 	public static HashMap<EntityLiving, EntityLivingBase> targetsToSet = new HashMap<EntityLiving, EntityLivingBase>();
+	private static World worldToDelete = null;
 
 	public static String lastWorldName;
 
@@ -61,6 +65,7 @@ public class ServerTickHandler{
 
 	@SubscribeEvent
 	public void onServerTick(TickEvent.ServerTickEvent event){
+		System.out.println("did something!!!");
 		if (event.phase == TickEvent.Phase.START){
 			gameTick_Start();
 		}else if (event.phase == TickEvent.Phase.END){
@@ -69,13 +74,38 @@ public class ServerTickHandler{
 	}
 
 	@SubscribeEvent
-	public void onWorldTick(TickEvent.WorldTickEvent event){
+	public void onWorldTick(TickEvent.WorldTickEvent event) {
 		if (AMCore.config.retroactiveWorldgen())
 			RetroactiveWorldgenerator.instance.continueRetrogen(event.world);
 
+		System.out.println(event.world.provider.dimensionId + "!!");
 		applyDeferredPotionEffects();
-		if (event.phase == TickEvent.Phase.END){
+		if (event.phase == TickEvent.Phase.END) {
 			applyDeferredDimensionTransfers();
+
+			System.out.println(event.world.provider.dimensionId);
+			// detect unorthodox bossfight finish, player falling off
+			if (worldToDelete != null) DynamicBossWorldHelper.unregisterDimension(worldToDelete.provider.dimensionId, worldToDelete);
+			else if (event.world.provider instanceof DynamicBossWorldProvider) {
+				if (event.world.playerEntities.isEmpty()) worldToDelete = event.world;
+				else {
+					EntityPlayerMP entityPlayer = (EntityPlayerMP) event.world.playerEntities.get(0); // there's theoretically one
+					if (AMEventHandler.tick % 100 == 0) { // computationally expensive, nothing bad will happen if we do it once every 5sec
+						// no boss or too far
+						List boss = event.world.getEntitiesWithinAABB(AM2Boss.class, entityPlayer.boundingBox.expand(40, 40, 40));
+						if (boss.isEmpty()) {
+							DynamicBossWorldHelper.returnPlayerToOriginalPosition(entityPlayer);
+							worldToDelete = event.world;
+//							DynamicBossWorldHelper.unregisterDimension here could cause issues (?)
+						} else if (entityPlayer.fallDistance > 10 && entityPlayer.posY < 30) { // player is falling off
+							int[] playerSpawn = BossSpawnHelper.playerBossfightCoordinates[BossSpawnHelper.getIntFromBoss((AM2Boss) boss.get(0))];
+							entityPlayer.fallDistance = 0;
+							entityPlayer.setPositionAndUpdate(playerSpawn[0] + 0.5D, playerSpawn[1] + 2D, playerSpawn[2] + 0.5D);
+							event.world.playSoundEffect(playerSpawn[0] + 0.5D, playerSpawn[1], playerSpawn[2] + 0.5D, "mob.endermen.portal", 1.0F, 1.0F);
+						}
+					}
+				}
+			}
 		}
 
 		//update lingering spells

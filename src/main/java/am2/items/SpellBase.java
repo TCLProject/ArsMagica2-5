@@ -165,7 +165,7 @@ public class SpellBase extends ItemSpellBase{
 			if (!shape.isChanneled())
 				SpellHelper.instance.applyStackStage(stack, player, null, player.posX, player.posY, player.posZ, 0, world, true, true, 0);
 			if (world.isRemote && shape.isChanneled()){
-				//SoundHelper.instance.stopSound(shape.getSoundForAffinity(SpellUtils.instance.mainAffinityFor(stack), stack, null));
+				SpellSoundHelper.stopPlayingLoopingSound(shape.getSoundForAffinity(SpellUtils.instance.mainAffinityFor(stack), stack, null));
 			}
 		}
 	}

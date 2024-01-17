@@ -397,8 +397,10 @@ public class ItemSpellBook extends ArsMagicaItem{
 			activeScroll.addInformation(stack, par2EntityPlayer, par3List, par4);
 		}
 
-		par3List.add("\247c" + StatCollector.translateToLocal("am2.tooltip.spellbookWarning1") + "\247f");
-		par3List.add("\247c" + StatCollector.translateToLocal("am2.tooltip.spellbookWarning2") + "\247f");
+		if (par1ItemStack != null && !(par1ItemStack.getItem() instanceof ItemArcaneGuardianSpellbook)) { // arcane guardian spellbook cannot be dyed
+			par3List.add("\247c" + StatCollector.translateToLocal("am2.tooltip.spellbookWarning1") + "\247f");
+			par3List.add("\247c" + StatCollector.translateToLocal("am2.tooltip.spellbookWarning2") + "\247f");
+		}
 	}
 
 	@Override

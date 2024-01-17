@@ -50,6 +50,10 @@ public class RenderPlayerSpecial extends RenderPlayer {
         return new ResourceLocation("arsmagica2", "textures/models/" + playerModelMap.get(((EntityPlayer)player).getCommandSenderName()) + ".png");
     }
 
+    public static ResourceLocation getEntityTextureFromOutside(AbstractClientPlayer player) {
+        return new ResourceLocation("arsmagica2", "textures/models/" + playerModelMap.get(((EntityPlayer)player).getCommandSenderName()) + ".png");
+    }
+
     @Override
     protected boolean func_110813_b(EntityLivingBase entity) {
         boolean isGUiEnabled = Minecraft.isGuiEnabled();

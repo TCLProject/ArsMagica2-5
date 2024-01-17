@@ -3,19 +3,13 @@ package am2.interop;
 import am2.blocks.BlocksCommonProxy;
 import am2.blocks.RecipesEssenceRefiner;
 import am2.items.RecipeArsMagica;
-import am2.items.RecipesArsMagica;
-import am2.texture.ResourceManager;
 import codechicken.lib.gui.GuiDraw;
 import codechicken.nei.NEIServerUtils;
 import codechicken.nei.PositionedStack;
-import codechicken.nei.recipe.GuiRecipeTab;
-import codechicken.nei.recipe.HandlerInfo;
 import codechicken.nei.recipe.TemplateRecipeHandler;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StatCollector;
-import net.minecraftforge.oredict.OreDictionary;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
@@ -79,11 +73,9 @@ public class RecipeHandlerEssence extends TemplateRecipeHandler {
 		return StatCollector.translateToLocal("am2.gui.EssenceRefiner");
 	}
 
-	public String getRecipeID() {
-		return "arsmagica2.essence_refiner";
-	}
 
-	public String getHandlerId() {
+	@Override
+	public String getOverlayIdentifier() {
 		return "arsmagica2.essence_refiner";
 	}
 
@@ -94,7 +86,7 @@ public class RecipeHandlerEssence extends TemplateRecipeHandler {
 
 	@Override
 	public void loadTransferRects() {
-		transferRects.add(new RecipeTransferRect(new Rectangle(18, 3, 18, 18), getRecipeID()));
+		transferRects.add(new RecipeTransferRect(new Rectangle(18, 3, 18, 18), getOverlayIdentifier()));
 	}
 
 	@Override
@@ -116,15 +108,15 @@ public class RecipeHandlerEssence extends TemplateRecipeHandler {
 	}
 
 	public List<? extends RecipeArsMagica> getRecipes() {
-		if (!GuiRecipeTab.handlerMap.containsKey(getHandlerId())) {
-			HandlerInfo info = new HandlerInfo.Builder(getHandlerId(), "Ars Magica 2", "arsmagica2")
-					.setHeight(HandlerInfo.DEFAULT_HEIGHT)
-					.setWidth(HandlerInfo.DEFAULT_WIDTH)
-					.setMaxRecipesPerPage(this.recipiesPerPage())
-					.setDisplayStack(new ItemStack(BlocksCommonProxy.essenceRefiner))
-					.build();
-			GuiRecipeTab.handlerMap.put(getHandlerId(), info);
-		}
+//		if (!GuiRecipeTab.handlerMap.containsKey(getHandlerId())) {
+//			HandlerInfo info = new HandlerInfo.Builder(getHandlerId(), "Ars Magica 2", "arsmagica2")
+//					.setHeight(HandlerInfo.DEFAULT_HEIGHT)
+//					.setWidth(HandlerInfo.DEFAULT_WIDTH)
+//					.setMaxRecipesPerPage(this.recipiesPerPage())
+//					.setDisplayStack(new ItemStack(BlocksCommonProxy.essenceRefiner))
+//					.build();
+//			GuiRecipeTab.handlerMap.put(getHandlerId(), info);
+//		}
 		List<RecipeArsMagica> list = new ArrayList();
 		for (Object r : RecipesEssenceRefiner.essenceRefinement().GetRecipeList().values()) {
 			RecipeArsMagica recipe = (RecipeArsMagica) r;
@@ -139,7 +131,7 @@ public class RecipeHandlerEssence extends TemplateRecipeHandler {
 
 	@Override
 	public void loadCraftingRecipes(String outputId, Object... results) {
-		if(outputId.equals(getRecipeID())) {
+		if(outputId.equals(getOverlayIdentifier())) {
 			for(RecipeArsMagica recipe : getRecipes())
 				arecipes.add(getCachedRecipe(recipe));
 		} else super.loadCraftingRecipes(outputId, results);

@@ -2,6 +2,7 @@ package am2.particles;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.block.Block;
 import net.minecraft.client.particle.EntityFX;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
@@ -111,16 +112,18 @@ public class AMParticle extends EntityFX{
 	public void SetParticleTextureByName(String name){
 		this.particleName = name;
 		if (name.startsWith("break_")){
-			//TODO:
-			/*String[] split = name.replace("break_", "").split("_");
-			int bid = Integer.parseInt(split[0]);
+			String[] split = name.replace("break_", "").split("_");
+			int blockId = -1;
+			try {
+				blockId = Integer.parseInt(split[0]);
+			} catch (Exception e) {;} // a string
 			int meta = Integer.parseInt(split[1]);
 
-			Block block = Block.getBlockById(bid);
+			Block block = blockId == -1 ? Block.getBlockFromName(split[0]) : Block.getBlockById(blockId);
 			if (block != null){
 				this.particleIcon = block.getIcon(rand.nextInt(6), meta);
 				isBreak = true;
-			}*/
+			}
 		}else{
 			this.particleIcon = AMParticleIcons.instance.getIconByName(name);
 		}

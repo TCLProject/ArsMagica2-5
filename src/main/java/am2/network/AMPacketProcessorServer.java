@@ -8,6 +8,7 @@ import am2.api.power.PowerTypes;
 import am2.blocks.tileentities.*;
 import am2.containers.ContainerMagiciansWorkbench;
 import am2.containers.ContainerSpellCustomization;
+import am2.customdata.CustomGameData;
 import am2.customdata.CustomWorldData;
 import am2.guis.ArsMagicaGuiIdList;
 import am2.items.ContainerKeystone;
@@ -22,13 +23,17 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent.ServerCustomPacketEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.server.FMLServerHandler;
+import ibxm.Player;
 import io.netty.buffer.ByteBufInputStream;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetHandlerPlayServer;
+import net.minecraft.network.Packet;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
@@ -68,8 +73,14 @@ public class AMPacketProcessorServer{
 			case AMPacketIDs.SYNCCOMPENDIUMREQUEST:
 				handleSyncCompendiumRequest(remaining, (EntityPlayerMP)player);
 				break;
+			case AMPacketIDs.REQUESTGAMEVARSFROMSERVER:
+				handleServerGameVarsRequest(remaining, (EntityPlayerMP)player);
+				break;
 			case AMPacketIDs.REQUESTWORLDDATACHANGE:
 				handleRequestWorldDataChange(remaining, (EntityPlayerMP)player);
+				break;
+			case AMPacketIDs.REQUESTGAMEVARSFROMCLIENTRESPONSE:
+				CustomGameData.handleClientResponded(player, remaining);
 				break;
 			case AMPacketIDs.SYNC_BETA_PARTICLES:
 				handleSyncBetaParticles(remaining, (EntityPlayerMP)player);
@@ -143,6 +154,22 @@ public class AMPacketProcessorServer{
 		}
 	}
 
+	private void handleServerGameVarsRequest(byte[] remaining, EntityPlayerMP player) {
+		AMDataWriter writer = new AMDataWriter();
+		NBTTagCompound gamedata = new NBTTagCompound();
+		int c = 0;
+		for (Object o : CustomGameData.getGameData().keySet()) {
+			String iS = (String) o;
+			String iValue = CustomGameData.getGameData().get(iS);
+			gamedata.setString("entry" + c, iValue);
+			gamedata.setString("entryname" + c, iS);
+			c++;
+		}
+		gamedata.setInteger("sizeofdata", CustomGameData.getGameData().size());
+		writer.add(gamedata);
+		AMNetHandler.INSTANCE.sendPacketToClientPlayer(player, AMPacketIDs.REQUESTGAMEVARSFROMSERVERRESPONSE, writer.generate());
+	}
+
 	public static void handleSyncCompendiumRequest(byte[] remaining, EntityPlayerMP player) {
 		ExtendedProperties ep = ExtendedProperties.For(player);
 		if (ep != null) {
@@ -169,7 +196,8 @@ public class AMPacketProcessorServer{
 		World world = DimensionManager.getWorld(rdr.getInt());
 		String name = rdr.getString();
 		String value = rdr.getString();
-		CustomWorldData.processRequest(world, name, value, player);
+		boolean isUniversal = rdr.getBoolean();
+		CustomWorldData.processRequest(world, name, value, player, isUniversal);
 	}
 
 	private void handleSyncCompendium(byte[] remaining, EntityPlayerMP entity) {
@@ -408,25 +436,20 @@ public class AMPacketProcessorServer{
 		}
 	}
 
-	private void handleMagicLevelUp(byte[] data, EntityPlayerMP player){
-		/*AMDataReader reader = new AMDataReader(data, false);
+	private void handleMagicLevelUp(byte[] data, EntityPlayerMP playerMP){
+		AMDataReader reader = new AMDataReader(data, false);
 		int entityID = reader.getInt();
 		Entity ent = getEntityByID(entityID);
 
 		if (ent == null || !(ent instanceof EntityLiving)) return;
 
-		if (AMCore.proxy.IncreaseEntityMagicLevel((EntityLiving)ent, ent.worldObj)){
-			if (ent instanceof EntityPlayerMP){
-				EntityPlayerMP player = (EntityPlayerMP)ent;
-				AMDataWriter writer = new AMDataWriter();
-				writer.add(true);
-				writer.add(player.experienceLevel);
-				Packet pkt = createArsMagicaClientPacket(AMPacketIDs.MAGIC_LEVEL_UP, writer.generate());
-				PacketDispatcher.sendPacketToPlayer(pkt, (Player) player);
-			}
-		}*/
-
-		//TODO
+		if (ent instanceof EntityPlayerMP){
+			EntityPlayerMP player = (EntityPlayerMP)ent;
+			AMDataWriter writer = new AMDataWriter();
+			writer.add(true);
+			writer.add(player.experienceLevel);
+			AMNetHandler.INSTANCE.sendPacketToClientPlayer(player, AMPacketIDs.MAGIC_LEVEL_UP, writer.generate());
+		}
 	}
 
 	public WorldServer[] getWorldServers(){

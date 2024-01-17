@@ -8,6 +8,7 @@ import am2.particles.ParticleColorShift;
 import am2.particles.ParticleHoldPosition;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItemFrame;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemBook;
@@ -15,6 +16,7 @@ import net.minecraft.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class ItemFrameWatcher{
 
@@ -69,11 +71,20 @@ public class ItemFrameWatcher{
 
 		EntityItemFrame frame = frameComp.frame;
 
+		List<Block> targetBlock = new ArrayList<>();
+
+		if (AMCore.config.isAlternativeStart()){
+			targetBlock.add(BlocksCommonProxy.witchwoodLeaves);
+			targetBlock.add(BlocksCommonProxy.witchwoodLog);
+		} else {
+			targetBlock.add(BlocksCommonProxy.liquidEssence);
+		}
+
 		for (int i = -radius; i <= radius; ++i){
 			for (int j = -radius; j <= radius; ++j){
 				for (int k = -radius; k <= radius; ++k){
 
-					if (frame.worldObj.getBlock((int)frame.posX + i, (int)frame.posY + j, (int)frame.posZ + k) == BlocksCommonProxy.liquidEssence){
+					if (targetBlock.contains(frame.worldObj.getBlock((int)frame.posX + i, (int)frame.posY + j, (int)frame.posZ + k))){
 
 						Integer time = watchedFrames.get(frameComp);
 						if (time == null){

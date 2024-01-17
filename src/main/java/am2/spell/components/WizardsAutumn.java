@@ -10,6 +10,7 @@ import am2.utility.DummyEntityPlayer;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -50,7 +51,7 @@ public class WizardsAutumn implements ISpellComponent{
 							if (block.removedByPlayer(world, DummyEntityPlayer.fromEntityLiving(caster), blockx + i, blocky + j, blockz + k)){
 								block.onBlockDestroyedByPlayer(world, blockx + i, blocky + j, blockz + k, meta);
 								block.harvestBlock(world, DummyEntityPlayer.fromEntityLiving(caster), blockx + i, blocky + j, blockz + k, meta);
-								//TODO: play sound
+								if (caster instanceof EntityPlayer) world.playAuxSFXAtEntity((EntityPlayer)caster, 2001, blockx, blocky, blockz, Block.getIdFromBlock(block) + (world.getBlockMetadata(blockx, blocky, blockz) << 12));
 							}
 						}
 					}

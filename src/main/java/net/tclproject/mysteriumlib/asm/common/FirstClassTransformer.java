@@ -14,14 +14,14 @@ import cpw.mods.fml.common.asm.transformers.deobf.FMLDeobfuscatingRemapper;
 /** 
  * This transformer transforms any classes that load before minecraft's classes do.
  * When minecraft classes start loading (actually, a bit earlier - in Loader.injectData) 
- * all fixes from this class are transferred to CustomClassTransformer. This is needed
+ * all fixes from this class are transferred to MCustomClassTransformer. This is needed
  * in order for the fixes in MysteriumASM Lib to be applied after forge deobfuscation.
  */
-public class FirstClassTransformer extends TargetClassTransformer implements IClassTransformer {
+public class FirstClassTransformer extends MTargetClassTransformer implements IClassTransformer {
 
 	/**To check if some mod is using the library before it is loaded.*/
     public static FirstClassTransformer instance = new FirstClassTransformer();
-    /**If the fixes from here have been transferred into CustomClassTransformer.*/
+    /**If the fixes from here have been transferred into MCustomClassTransformer.*/
     boolean registeredBuiltinFixes;
 
     public FirstClassTransformer() {
@@ -52,17 +52,17 @@ public class FirstClassTransformer extends TargetClassTransformer implements ICl
      * Has custom logic to see if the method is the target method, accounting for an obfuscated descriptor.
      * */
     @Override
-    public FixInserterClassVisitor createInserterClassVisitor(ClassWriter classWriter, List<ASMFix> fixes) {
+    public FixInserterClassVisitor createInserterClassVisitor(ClassWriter classWriter, List<MASMFix> fixes) {
         return new FixInserterClassVisitor(this, classWriter, fixes) {
             @Override
-            protected boolean isTheTarget(ASMFix fix, String name, String descriptor) {
+            protected boolean isTheTarget(MASMFix fix, String name, String descriptor) {
                 return super.isTheTarget(fix, name, obfuscateDescriptor(descriptor));
             }
         };
     }
 
     /**Getter for fixesMap.*/
-    public HashMap<String, List<ASMFix>> getFixesMap() {
+    public HashMap<String, List<MASMFix>> getFixesMap() {
         return fixesMap;
     }
 

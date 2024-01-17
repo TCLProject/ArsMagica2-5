@@ -22,6 +22,7 @@ import am2.playerextensions.ExtendedProperties;
 import am2.power.PowerNodeEntry;
 import am2.utility.EntityUtilities;
 import am2.utility.RenderUtilities;
+import com.tfc.minecraft_effekseer_implementation.MEI;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import cpw.mods.fml.relauncher.Side;
@@ -49,6 +50,7 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixesMagicka;
+import net.tclproject.mysteriumlib.render.dae.hea3ven.colladamodel.client.model.lib.ModelManager;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
@@ -57,6 +59,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class AMClientEventHandler{
+
+	@SideOnly(Side.CLIENT)
+	public static ModelManager modelManager;
+
+	@SideOnly(Side.CLIENT)
+	public static ModelManager getModelManager() {
+		return modelManager;
+	}
+
 	@SubscribeEvent
 	public void onBlockHighlight(DrawBlockHighlightEvent event){
 
@@ -192,7 +203,6 @@ public class AMClientEventHandler{
 					float batteryCharge = stack.stackTagCompound.getFloat("mana_battery_charge");
 					PowerTypes powerType = PowerTypes.getByID(stack.stackTagCompound.getInteger("mana_battery_powertype"));
 					if (batteryCharge != 0) {
-						// TODO localize this tooltip
 						event.toolTip.add(String.format("\u00A7r\u00A79Contains \u00A75%.2f %s%s \u00A79etherium", batteryCharge, powerType.chatColor(), powerType.name()));
 					}
 				}
@@ -307,7 +317,10 @@ public class AMClientEventHandler{
 	@SideOnly(Side.CLIENT)
 	public void onEntityJoinWorldClient(EntityJoinWorldEvent event){
 		if (event.entity instanceof EntityPlayer) {
-			if (event.entity == Minecraft.getMinecraft().thePlayer) ArcaneCompendium.instance.loadUnlockData();
+			if (event.entity == Minecraft.getMinecraft().thePlayer) {
+				ArcaneCompendium.instance.loadUnlockData();
+				MEI.loadEffeksFromWorldVars();
+			}
 		}
 		if (event.entity instanceof EntityPlayer) {
 			if (event.entity != Minecraft.getMinecraft().thePlayer) {
@@ -324,6 +337,7 @@ public class AMClientEventHandler{
 			ServerData serverData = Minecraft.getMinecraft().func_147104_D();
 			if (serverData == null) {
 				MysteriumPatchesFixesMagicka.playerModelMap.clear();
+				clearDynamicLists();
 				return; // singleplayer
 			}
 
@@ -332,9 +346,18 @@ public class AMClientEventHandler{
 			if (tablist.contains(Minecraft.getMinecraft().thePlayer.getCommandSenderName())) tablist.remove(Minecraft.getMinecraft().thePlayer.getCommandSenderName());
 			if (event.entity == Minecraft.getMinecraft().thePlayer && tablist.size() == 0) { // no players to sync the map from, clear it instead
 				MysteriumPatchesFixesMagicka.playerModelMap.clear();
+				clearDynamicLists();
 				return;
 			}
 		}
+	}
+
+	public static void clearDynamicLists() {
+		// clear the dynamic lists: they will be automatically reloaded if need be
+		AMEventHandler.slowedEntitiesUUIDs.clear();
+		AMEventHandler.slowedTiles.clear();
+		AMEventHandler.acceleratedEntitiesUUIDs.clear();
+		AMEventHandler.forceShielded.clear();
 	}
 	
 	@SubscribeEvent

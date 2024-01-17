@@ -2,16 +2,14 @@ package am2.interop;
 
 import am2.EnervatorRecipeHelper;
 import am2.blocks.BlocksCommonProxy;
-import codechicken.lib.gui.GuiDraw;
-import codechicken.nei.NEIServerUtils;
-import codechicken.nei.PositionedStack;
-import codechicken.nei.recipe.GuiRecipeTab;
-import codechicken.nei.recipe.HandlerInfo;
-import codechicken.nei.recipe.TemplateRecipeHandler;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.StatCollector;
 import org.lwjgl.opengl.GL11;
+import codechicken.lib.gui.GuiDraw;
+import codechicken.nei.NEIServerUtils;
+import codechicken.nei.PositionedStack;
+import codechicken.nei.recipe.TemplateRecipeHandler;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -51,11 +49,8 @@ public class RecipeHandlerEnervator  extends TemplateRecipeHandler{
 		return StatCollector.translateToLocal("am2.gui.EntropicEnervator");
 	}
 
-	public String getRecipeID() {
-		return "arsmagica2.entropic_enervator";
-	}
-
-	public String getHandlerId() {
+	@Override
+	public String getOverlayIdentifier() {
 		return "arsmagica2.entropic_enervator";
 	}
 
@@ -66,7 +61,7 @@ public class RecipeHandlerEnervator  extends TemplateRecipeHandler{
 
 	@Override
 	public void loadTransferRects() {
-		transferRects.add(new RecipeTransferRect(new Rectangle(54, 3, 22, 18), getRecipeID()));
+		transferRects.add(new RecipeTransferRect(new Rectangle(54, 3, 22, 18), getOverlayIdentifier()));
 	}
 
 	@Override
@@ -88,15 +83,15 @@ public class RecipeHandlerEnervator  extends TemplateRecipeHandler{
 	}
 
 	public HashMap getRecipes() {
-		if (!GuiRecipeTab.handlerMap.containsKey(getHandlerId())) {
-			HandlerInfo info = new HandlerInfo.Builder(getHandlerId(), "Ars Magica 2", "arsmagica2")
-					.setHeight(HandlerInfo.DEFAULT_HEIGHT)
-					.setWidth(HandlerInfo.DEFAULT_WIDTH)
-					.setMaxRecipesPerPage(this.recipiesPerPage())
-					.setDisplayStack(new ItemStack(BlocksCommonProxy.entropicEnervator))
-					.build();
-			GuiRecipeTab.handlerMap.put(getHandlerId(), info);
-		}
+//		if (!GuiRecipeTab.handlerMap.containsKey(getHandlerId())) {
+//			HandlerInfo info = new HandlerInfo.Builder(getHandlerId(), "Ars Magica 2", "arsmagica2")
+//					.setHeight(HandlerInfo.DEFAULT_HEIGHT)
+//					.setWidth(HandlerInfo.DEFAULT_WIDTH)
+//					.setMaxRecipesPerPage(this.recipiesPerPage())
+//					.setDisplayStack(new ItemStack(BlocksCommonProxy.entropicEnervator))
+//					.build();
+//			GuiRecipeTab.handlerMap.put(getHandlerId(), info);
+//		}
 
 		return EnervatorRecipeHelper.instance.getRecipes();
 	}
@@ -107,7 +102,7 @@ public class RecipeHandlerEnervator  extends TemplateRecipeHandler{
 
 	@Override
 	public void loadCraftingRecipes(String outputId, Object... results) {
-		if(outputId.equals(getRecipeID())) {
+		if(outputId.equals(getOverlayIdentifier())) {
 			for (Object key : getRecipes().keySet()) {
 				ItemStack from = (ItemStack)key;
 				arecipes.add(getCachedRecipe(from, (ItemStack)getRecipes().get(from)));

@@ -102,8 +102,8 @@ public class BlockEntropicEnervator extends PoweredBlock{
 		if (this.HandleSpecialItems(par1World, par5EntityPlayer, par2, par3, par4)){
 			return true;
 		}
+		super.onBlockActivated(par1World, par2, par3, par4, par5EntityPlayer, par6, par7, par8, par9);
 		if (!par1World.isRemote){
-			super.onBlockActivated(par1World, par2, par3, par4, par5EntityPlayer, par6, par7, par8, par9);
 			FMLNetworkHandler.openGui(par5EntityPlayer, AMCore.instance, ArsMagicaGuiIdList.GUI_ENERVATOR, par1World, par2, par3, par4);
 		}
 		return true;

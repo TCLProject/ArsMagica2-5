@@ -7,10 +7,7 @@ import am2.api.spell.enums.SpellCastResult;
 import am2.network.AMNetHandler;
 import am2.playerextensions.SkillData;
 import am2.power.PowerNodeRegistry;
-import am2.spell.SkillManager;
-import am2.spell.SkillTreeManager;
-import am2.spell.SpellHelper;
-import am2.spell.SpellUtils;
+import am2.spell.*;
 import am2.texture.ResourceManager;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -237,7 +234,7 @@ public class ItemSpellStaff extends ArsMagicaItem{
 					if (SpellHelper.instance.applyStackStage(spell, entityplayer, null, entityplayer.posX, entityplayer.posY, entityplayer.posZ, 0, world, false, false, i) == SpellCastResult.SUCCESS)
 						consumeStaffCharge(itemstack, entityplayer);
 				if (world.isRemote && shape.isChanneled()){
-					//SoundHelper.instance.stopSound(shape.getSoundForAffinity(SpellUtils.instance.mainAffinityFor(spell), spell, null));
+					 SpellSoundHelper.stopPlayingLoopingSound(shape.getSoundForAffinity(SpellUtils.instance.mainAffinityFor(spell), spell, null));
 				}
 			}
 		}

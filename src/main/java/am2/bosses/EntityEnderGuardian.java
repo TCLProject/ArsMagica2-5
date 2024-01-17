@@ -252,6 +252,11 @@ public class EntityEnderGuardian extends AM2Boss implements IAnimatedEntity{
 	}
 
 	@Override
+	protected String getMusic(){
+		return "arsmagica2:mob.boss.canyouheartheend";
+	}
+
+	@Override
 	public String getAttackSound(){
 		return "arsmagica2:mob.enderguardian.attack";
 	}
@@ -265,6 +270,11 @@ public class EntityEnderGuardian extends AM2Boss implements IAnimatedEntity{
 
 		for (int j = 0; j < i; j++){
 			this.entityDropItem(new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_ENDER), 0.0f);
+		}
+
+		int h = rand.nextInt(10);
+		if (h < 4 && par1){
+			this.entityDropItem(new ItemStack(ItemsCommonProxy.recordEnder), 0.0f);
 		}
 
 		i = rand.nextInt(10);

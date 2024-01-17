@@ -10,11 +10,23 @@ import java.util.*;
 
 public class IllEffectsManager{
 	private TreeMap<IIllEffect, Integer> DarkNexusBadThings;
+	private TreeMap<IIllEffect, Integer> AllBadThings;
 	public static IllEffectsManager instance = new IllEffectsManager();
 	private static Random rand = new Random();
 
 	private IllEffectsManager(){
 		DarkNexusBadThings = new TreeMap<IIllEffect, Integer>();
+		AllBadThings = new TreeMap<IIllEffect, Integer>();
+
+		RegisterIllEffect(new IllEffectDrainMana(), 15, BadThingTypes.DARKNEXUS);
+		RegisterIllEffect(new IllEffectSpark(), 10, BadThingTypes.DARKNEXUS);
+		RegisterIllEffect(new IllEffectSparkStorm(), 2, BadThingTypes.DARKNEXUS);
+
+		RegisterIllEffect(new IllEffectDrainMana(), 16, BadThingTypes.ALL);
+		RegisterIllEffect(new IllEffectSpark(), 13, BadThingTypes.ALL);
+		RegisterIllEffect(new IllEffectSpawnDarkling(), 11, BadThingTypes.ALL);
+		RegisterIllEffect(new IllEffectExplode(), 5, BadThingTypes.ALL);
+		RegisterIllEffect(new IllEffectSparkStorm(), 2, BadThingTypes.ALL);
 	}
 
 	public void ApplyRandomBadThing(TileEntity te, IllEffectSeverity maxSev, BadThingTypes type){
@@ -22,9 +34,9 @@ public class IllEffectsManager{
 
 		switch (type){
 		case ALL:
-			for (IIllEffect badThing : DarkNexusBadThings.keySet()){
+			for (IIllEffect badThing : AllBadThings.keySet()){
 				if (badThing.GetSeverity().ordinal() <= maxSev.ordinal()){
-					possibleBadThings.put(badThing, DarkNexusBadThings.get(badThing));
+					possibleBadThings.put(badThing, AllBadThings.get(badThing));
 				}
 			}
 			break;
@@ -75,8 +87,8 @@ public class IllEffectsManager{
 	public static void RegisterIllEffect(IIllEffect effect, int weight, BadThingTypes type){
 		switch (type){
 		case ALL:
-			instance.DarkNexusBadThings.put(effect, weight);
-			instance.DarkNexusBadThings = entriesSortedByValues(instance.DarkNexusBadThings);
+			instance.AllBadThings.put(effect, weight);
+			instance.AllBadThings = entriesSortedByValues(instance.AllBadThings);
 			break;
 		case DARKNEXUS:
 		default:
@@ -99,7 +111,7 @@ public class IllEffectsManager{
 		for (Map.Entry<K, V> entry : map.entrySet()){
 			tm.put(entry.getKey(), entry.getValue());
 		}
-		//sortedEntries.addAll(map.entrySet());
+//		sortedEntries.addAll(map.entrySet());
 		return tm;
 	}
 }

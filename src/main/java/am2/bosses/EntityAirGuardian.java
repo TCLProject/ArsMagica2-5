@@ -134,10 +134,11 @@ public class EntityAirGuardian extends AM2Boss{
 						//wind.AddParticleController(new PaticleFleePoint(wind, new AMVector3(this), rand.nextInt() * 0.1f + 0.01f, 10, 1, false));
 					}
 				}
-			}else{
-				if (this.posY < 145)
-					this.setDead();
-			}
+			} // TODO: make this fellow fly
+//			else{
+//				if (this.posY < 145)
+//					this.setDead();
+//			}
 		}
 
 		super.onUpdate();
@@ -169,6 +170,11 @@ public class EntityAirGuardian extends AM2Boss{
 		}
 
 		i = rand.nextInt(10);
+
+		int j = rand.nextInt(10);
+		if (j < 4 && par1){
+			this.entityDropItem(new ItemStack(ItemsCommonProxy.recordGreens), 0.0f);
+		}
 
 		if (i < 3 && par1){
 			this.entityDropItem(ItemsCommonProxy.airSledEnchanted.copy(), 0.0f);
@@ -203,6 +209,11 @@ public class EntityAirGuardian extends AM2Boss{
 	@Override
 	protected String getLivingSound(){
 		return "arsmagica2:mob.airguardian.idle";
+	}
+
+	@Override
+	protected String getMusic(){
+		return "arsmagica2:mob.boss.greensymphony";
 	}
 
 	@Override

@@ -31,6 +31,9 @@ public class AMPacketIDs{
 	public static final byte SYNCCOMPENDIUM = 66;
 	public static final byte REQUESTWORLDDATACHANGE = 68;
 	public static final byte SYNCCOMPENDIUMREQUEST = 69;
+	public static final byte REQUESTGAMEVARSFROMSERVER = 71;
+	public static final byte REQUESTGAMEVARSFROMCLIENTRESPONSE = 73;
+	public static final byte SYNCEDSTRING_SYNC = 76;
 	//No longer needed
 	//public static final byte SHOW_UI_CUSTOMIZATION = 37;
 	public static final byte ENTITY_ACTION_UPDATE = 38;
@@ -58,4 +61,8 @@ public class AMPacketIDs{
 	public static final byte SYNCMAPTOCLIENTS = 65;
 	public static final byte SYNCWORLDDATATOCLIENTS = 67;
 	public static final byte SYNCCOMPENDIUMRESPONSE = 70;
+	public static final byte REQUESTGAMEVARSFROMCLIENT = 72;
+	public static final byte REQUESTGAMEVARSFROMSERVERRESPONSE = 74;
+	public static final byte CHUNK_DATA_SYNC_TO_CLIENT = 75;
+	public static final byte SYNCDIMENSIONSTOCLIENT = 77;
 }

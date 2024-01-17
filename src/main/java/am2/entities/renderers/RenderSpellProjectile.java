@@ -33,7 +33,7 @@ public class RenderSpellProjectile extends Render{
 		GL11.glDisable(32826); /* RESCALE_NORMAL_EXT */
 		GL11.glAlphaFunc(GL11.GL_GREATER, 0.003921569F);
 		GL11.glDepthMask(false);
-		//RenderHelper.disableStandardItemLighting();
+		//ProtectedRenderHelper.disableStandardItemLighting();
 
 		Minecraft.getMinecraft().renderEngine.bindTexture(projectile);
 

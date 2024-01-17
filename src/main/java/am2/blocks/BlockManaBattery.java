@@ -58,7 +58,6 @@ public class BlockManaBattery extends PoweredBlock{
 		if (par1World.isRemote){
 			TileEntityManaBattery te = getTileEntity(par1World, par2, par3, par4);
 			if (te != null){
-				// TODO localize these messages
 				if (AMCore.config.colourblindMode()){
 					par5EntityPlayer.addChatMessage(new ChatComponentText(String.format("Charge Level: %.2f %% [%s]", PowerNodeRegistry.For(par1World).getPower(te, te.getPowerType()) / te.getCapacity() * 100, getColorNameFromPowerType(te.getPowerType()))));
 				}else{

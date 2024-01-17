@@ -1,5 +1,6 @@
 package thehippomaster.AnimationAPI.client;
 
+import net.minecraftforge.client.model.IModelCustom;
 import org.lwjgl.opengl.GL11;
 
 import cpw.mods.fml.relauncher.Side;
@@ -9,7 +10,6 @@ import net.minecraft.client.model.ModelBox;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraftforge.client.model.IModelCustom;
 
 /**
  * ModelObjRenderer.java
@@ -170,7 +170,7 @@ public class ModelObjRenderer extends ModelRenderer {
 		}
 	}
 	
-	protected void compileDisplayList(float scale) {
+	public void compileDisplayList(float scale) {
 		displayList = GLAllocation.generateDisplayLists(1);
 		GL11.glNewList(displayList, GL11.GL_COMPILE);
 		

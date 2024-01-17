@@ -1,8 +1,7 @@
 package am2.enchantments;
 
-import am2.items.ItemSpellBook;
+import am2.AMCore;
 import net.minecraft.enchantment.Enchantment;
-import net.minecraft.enchantment.EnchantmentProtection;
 import net.minecraft.enchantment.EnumEnchantmentType;
 import net.minecraft.item.ItemStack;
 
@@ -35,7 +34,7 @@ public class EnchantmentSoulbound extends Enchantment{
 
 	@Override
 	public boolean canApplyAtEnchantingTable(ItemStack stack){
-		return false;
+		return AMCore.config.isSoulboundEnchEnabledAtTable();
 	}
 
 	@Override
@@ -55,6 +54,6 @@ public class EnchantmentSoulbound extends Enchantment{
 	@Override
 	public boolean isAllowedOnBooks()
 	{
-		return false;
+		return AMCore.config.isSoulboundEnchEnabledAtTable();
 	}
 }

@@ -17,12 +17,9 @@ import am2.buffs.BuffEffectScrambleSynapses;
 import am2.buffs.BuffEffectTemporalAnchor;
 import am2.buffs.BuffList;
 import am2.buffs.BuffStatModifiers;
-import am2.configuration.AMConfig;
 import am2.damage.DamageSourceFire;
 import am2.damage.DamageSources;
-import am2.entities.EntityFlicker;
-import am2.entities.EntityHallucination;
-import am2.entities.EntitySpecificHallucinations;
+import am2.entities.*;
 import am2.items.ItemSoulspike;
 import am2.items.ItemsCommonProxy;
 import am2.network.AMNetHandler;
@@ -31,17 +28,29 @@ import am2.playerextensions.ExtendedProperties;
 import am2.playerextensions.RiftStorage;
 import am2.playerextensions.SkillData;
 import am2.power.PowerNodeRegistry;
+import am2.spell.SkillManager;
+import am2.spell.SkillTreeManager;
+import am2.spell.SpellSoundHelper;
 import am2.utility.*;
+import am2.worldgen.dynamic.DynamicBossWorldHelper;
+import am2.worldgen.dynamic.DynamicBossWorldProvider;
+import am2.worldgen.smartgen.WorldGenStructures;
+import am2.worldgen.smartgen.generic.SelectionRenderer;
+import am2.worldgen.smartgen.struct.info.StructureEntityInfo;
 import cofh.api.energy.IEnergyHandler;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.Event.Result;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import ivorius.ivtoolkit.rendering.grid.GridRenderer;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.*;
 import net.minecraft.entity.ai.attributes.IAttributeInstance;
 import net.minecraft.entity.item.EntityBoat;
@@ -57,16 +66,26 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.*;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.stats.AchievementList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
+import net.minecraft.world.WorldType;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.gen.structure.StructureBoundingBox;
 import net.minecraftforge.client.event.RenderBlockOverlayEvent;
+import net.minecraftforge.client.event.RenderWorldLastEvent;
+import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.DimensionManager;
+import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.event.brewing.PotionBrewedEvent;
+import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.EntityEvent.EntityConstructing;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
@@ -75,9 +94,11 @@ import net.minecraftforge.event.entity.living.LivingEvent.LivingJumpEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingUpdateEvent;
 import net.minecraftforge.event.entity.player.*;
 import net.minecraftforge.event.entity.player.PlayerEvent.BreakSpeed;
+import net.minecraftforge.event.terraingen.PopulateChunkEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixesMagicka;
+import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -112,6 +133,161 @@ public class AMEventHandler{
 				}
 			}
 		}
+	}
+
+	@SubscribeEvent
+	public void onPlayerTick(TickEvent.PlayerTickEvent event)
+	{
+		StructureEntityInfo structureEntityInfo = StructureEntityInfo.getStructureEntityInfo(event.player);
+		if (structureEntityInfo != null)
+		{
+			structureEntityInfo.update(event.player);
+		}
+	}
+
+	// no inter mod events to the bundled rccomplex lite
+//	@SubscribeEvent
+//	public void onTick(TickEvent event)
+//	{
+//		if ((event.type == TickEvent.Type.CLIENT || event.type == TickEvent.Type.SERVER) && event.phase == TickEvent.Phase.END)
+//		{
+//			AMCore.communicationHandler.handleMessages(event.type == TickEvent.Type.SERVER, true);
+//		}
+//	}
+
+	public static List<EntityGeneric.BiomeEntitySpawnEntry> spawnEntries = new ArrayList<>();
+
+	// custom mob spawning system for more customization
+
+	@SubscribeEvent
+	public void entitySpawnEvent(LivingSpawnEvent.CheckSpawn event) {
+		if (event.world.provider.terrainType != WorldType.FLAT && event.getResult() != Result.DENY && !(event.entity instanceof EntityGeneric))
+		{
+			for (EntityGeneric.BiomeEntitySpawnEntry spawnEntry : spawnEntries) {
+				if (contains(spawnEntry.dimensions, event.world.provider.dimensionId)) {
+					int x = MathHelper.floor_float(event.x);
+					int y = MathHelper.floor_float(event.y);
+					int z = MathHelper.floor_float(event.z);
+					if (!spawnEntry.spawnOnSurface || event.world.canBlockSeeTheSky(x, y + 1, z)) {
+						if (!spawnEntry.spawnInDark || isValidLightLevelForSpawningInDark(event.world, x, y, z)) {
+							if ((spawnEntry.minYSpawn < event.y || spawnEntry.minYSpawn == -1) && (spawnEntry.maxYSpawn > event.y || spawnEntry.maxYSpawn == -1)) {
+								BiomeGenBase biome = event.world.getBiomeGenForCoords(x, z);
+								for (int i = 0; i < spawnEntry.biomeTypes.length; i++) {
+									if (BiomeDictionary.isBiomeOfType(biome, spawnEntry.biomeTypes[i])) {
+										if (rand.nextFloat() < (spawnEntry.biomeWeights[i] * AMCore.config.getSpecialEntitySpawnMultiplier())) { // basic chance check to spawn the entity
+											EntityGeneric entityToSpawn = GenericEntityTemplateRegistry.INSTANCE.createBasicEntityInstance(event.world, spawnEntry.builder);
+											if (SpawnBlacklists.entityCanSpawnHere(x, z, event.world, entityToSpawn)) {
+												entityToSpawn.setLocationAndAngles(event.x, event.y, event.z, rand.nextFloat() * 360.0F, 0.0F);
+												event.world.spawnEntityInWorld(entityToSpawn);
+											}
+										}
+										return;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	public static boolean contains(final int[] array, final int key) {
+		for(int i = 0; i < array.length; i++) {
+			if(array[i]==key) return true;
+		}
+		return false;
+	}
+
+	// from the Mob class, slightly modified
+	public static boolean isValidLightLevelForSpawningInDark(World worldObj, int x, int y, int z)
+	{
+		if (worldObj.getSavedLightValue(EnumSkyBlock.Sky, x, y, z) > rand.nextInt(32))
+		{
+			return false;
+		}
+		else
+		{
+			int l = worldObj.getBlockLightValue(x, y, z);
+
+			if (worldObj.isThundering())
+			{
+				int i1 = worldObj.skylightSubtracted;
+				worldObj.skylightSubtracted = 10;
+				l = worldObj.getBlockLightValue(x, y, z);
+				worldObj.skylightSubtracted = i1;
+			}
+
+			return l <= rand.nextInt(7);
+		}
+	}
+
+	public static final Set<StructureBoundingBox> disabledTileDropAreas = new HashSet<>();
+	private WorldGenStructures worldGenStructures = new WorldGenStructures();;
+
+	@SubscribeEvent
+	public void onPreChunkDecoration(PopulateChunkEvent.Pre event)
+	{
+		worldGenStructures.generate(event.rand, event.chunkX, event.chunkZ, event.world, event.chunkProvider, event.chunkProvider);
+	}
+
+	@SubscribeEvent
+	public void onEntityConstruction(EntityEvent.EntityConstructing event)
+	{
+		if (event.entity instanceof EntityPlayer)
+		{
+			StructureEntityInfo.initInEntity(event.entity);
+		}
+	}
+
+	@SubscribeEvent
+	public void onEntityDrop(EntityJoinWorldEvent event)
+	{
+		if (event.entity instanceof EntityItem)
+		{
+			final int entityX = MathHelper.floor_double(event.entity.posX);
+			final int entityY = MathHelper.floor_double(event.entity.posY);
+			final int entityZ = MathHelper.floor_double(event.entity.posZ);
+
+			if (disabledTileDropAreas.stream().anyMatch(input -> input.isVecInside(entityX, entityY, entityZ)))
+				event.setCanceled(true);
+		}
+	}
+
+	@SideOnly(Side.CLIENT)
+	@SubscribeEvent
+	public void onDrawWorld(RenderWorldLastEvent event)
+	{
+		Minecraft mc = Minecraft.getMinecraft();
+		int ticks = mc.thePlayer.ticksExisted;
+
+		EntityLivingBase renderEntity = mc.renderViewEntity;
+		StructureEntityInfo info = StructureEntityInfo.getStructureEntityInfo(mc.thePlayer);
+		double entityX = renderEntity.lastTickPosX + (renderEntity.posX - renderEntity.lastTickPosX) * (double) event.partialTicks;
+		double entityY = renderEntity.lastTickPosY + (renderEntity.posY - renderEntity.lastTickPosY) * (double) event.partialTicks;
+		double entityZ = renderEntity.lastTickPosZ + (renderEntity.posZ - renderEntity.lastTickPosZ) * (double) event.partialTicks;
+
+		GL11.glPushMatrix();
+		GL11.glTranslated(-entityX, -entityY, -entityZ);
+
+		if (info != null && info.showGrid)
+		{
+			int spacing = 10;
+			GL11.glDisable(GL11.GL_TEXTURE_2D);
+			GL11.glColor3f(0.5f, 0.5f, 0.5f);
+			GL11.glPushMatrix();
+			GL11.glTranslatef(MathHelper.floor_double(entityX / spacing) * spacing, MathHelper.floor_double(entityY / spacing) * spacing, MathHelper.floor_double(entityZ / spacing) * spacing);
+			GridRenderer.renderGrid(8, spacing, 100, 0.05f);
+			GL11.glPopMatrix();
+			GL11.glEnable(GL11.GL_TEXTURE_2D);
+		}
+
+		SelectionRenderer.renderSelection(mc.thePlayer, ticks, event.partialTicks);
+
+		if (info != null && info.danglingOperation != null)
+			info.danglingOperation.renderPreview(info.getPreviewType(), mc.theWorld, ticks, event.partialTicks);
+
+		GL11.glPopMatrix();
 	}
 
 	@SubscribeEvent
@@ -214,6 +390,10 @@ public class AMEventHandler{
 						fragment.setEntityItemStack(stack);
 						player.worldObj.spawnEntityInWorld(fragment);
 						player.worldObj.playSoundAtEntity(player, "ambient.weather.thunder",2F, 2F);
+						// compatibility with Hard Mode: The player doesn't actually die
+						event.setCanceled(true);
+						player.removePotionEffect(BuffList.psychedelic.id);
+						player.setHealth(2); // 1 heart
 					}
 				}
 			}
@@ -222,6 +402,40 @@ public class AMEventHandler{
 		if (soonToBeDead instanceof EntityPlayer){
 			storeSoulboundItemsForRespawn((EntityPlayer)soonToBeDead);
 		}
+	}
+
+	@SubscribeEvent(priority = EventPriority.LOWEST)
+	public void onEntityDeathLowPriority(LivingDeathEvent event){
+		EntityLivingBase soonToBeNotDead = event.entityLiving; // prevents items disappearing when player not killed (event cancel by white stones, etc)
+		if(event.isCanceled() && soonToBeNotDead instanceof EntityPlayer) restoreSoulboundItems((EntityPlayer) soonToBeNotDead);
+	}
+
+	public void restoreSoulboundItems(EntityPlayer player) {
+		if (soulbound_Storage.containsKey(player.getUniqueID())){
+			HashMap<Integer, ItemStack> soulboundItems = soulbound_Storage.get(player.getUniqueID());
+			for (Integer i : soulboundItems.keySet()){
+				if (i < player.inventory.getSizeInventory()){
+					player.inventory.setInventorySlotContents(i, soulboundItems.get(i));
+				}else{
+					boolean done = false;
+					for (int l = 0; l < player.inventory.getSizeInventory(); l++){
+						if (player.inventory.getStackInSlot(l) == null){
+							player.inventory.setInventorySlotContents(l, soulboundItems.get(i));
+							done = true;
+							break;
+						}
+					}
+					if (!done) player.entityDropItem(soulboundItems.get(i), 0);
+				}
+			}
+			soulbound_Storage.remove(player.getUniqueID());
+		}
+	}
+
+	public static boolean playerHasMagitech(EntityPlayer player) {
+		if (player.getCurrentArmor(3) != null && (player.getCurrentArmor(3).getItem() == ItemsCommonProxy.magitechGoggles ||
+				ArmorHelper.isInfusionPreset(player.getCurrentArmor(3), GenericImbuement.magitechGoggleIntegration))) return true;
+		return false;
 	}
 
 	@SubscribeEvent
@@ -485,7 +699,7 @@ public class AMEventHandler{
 		}
 	}
 
-	private static int tick = 0;
+	public static int tick = 0;
 
 	private static int[] getMinIndex(int[] array) {
 		int min = array[0];
@@ -519,14 +733,20 @@ public class AMEventHandler{
 
 		EntityLivingBase ent = event.entityLiving;
 
-		if (slowedEntitiesUUIDs.containsKey(ent.getUniqueID().toString())) {
-			if (ent.ticksExisted % slowedEntitiesUUIDs.get(ent.getUniqueID().toString()) != 0) {
-				event.setCanceled(true);
-				return;
+		if (!SkillTreeManager.instance.isSkillDisabled(SkillManager.instance.getSkill("DiluteTime"))) {
+			String UUID = ent.getUniqueID().toString();
+			if (slowedEntitiesUUIDs.containsKey(UUID)) {
+				if (ent.ticksExisted % slowedEntitiesUUIDs.get(UUID) != 0) {
+					event.setCanceled(true);
+					return;
+				}
 			}
 		}
 
 		World world = ent.worldObj;
+
+		boolean inBossWorld = (world.provider instanceof DynamicBossWorldProvider);
+		boolean inOverworld = world.provider.dimensionId == 0;
 
 		BuffStatModifiers.instance.applyStatModifiersBasedOnBuffs(ent);
 
@@ -541,49 +761,42 @@ public class AMEventHandler{
 		if (ent instanceof EntityPlayer){
 			EntityPlayer player = (EntityPlayer)ent;
 			if (!ent.isDead){
-				if (ent.ticksExisted > 5 && ent.ticksExisted < 10 && !ent.worldObj.isRemote){
-					if (soulbound_Storage.containsKey(player.getUniqueID())){
-						HashMap<Integer, ItemStack> soulboundItems = soulbound_Storage.get(player.getUniqueID());
-						for (Integer i : soulboundItems.keySet()){
-							if (i < player.inventory.getSizeInventory()){
-								player.inventory.setInventorySlotContents(i, soulboundItems.get(i));
-							}else{
-								boolean done = false;
-								for (int l = 0; l < player.inventory.getSizeInventory(); l++){
-									if (player.inventory.getStackInSlot(l) == null){
-										player.inventory.setInventorySlotContents(l, soulboundItems.get(i));
-										done = true;
-										break;
-									}
-								}
-								if (!done) player.entityDropItem(soulboundItems.get(i), 0);
-							}
-						}
-					}
+				if (ent.ticksExisted > 5 && !ent.worldObj.isRemote){
+					if (ent.ticksExisted < 10) restoreSoulboundItems(player);
+					if (ent.ticksExisted < 8 && inOverworld) DynamicBossWorldHelper.returnPlayerToOriginalPosition(player); // if player dies during bossfight. Deletion of world and music handled separately
 				}
 			}
-		}
 
-		if (ent instanceof EntityPlayer && extendedProperties.hasExtraVariable("ethereal")) { // ethereal form handling
-			int durationLeft = Integer.valueOf(extendedProperties.getExtraVariable("ethereal"));
-			EntityPlayer player = (EntityPlayer) ent;
-			if (durationLeft < 3) {
-				// deactivate form
-				ItemSoulspike.removeTagFromBoots(player.inventory.armorInventory[0]);
-				player.capabilities.disableDamage = false;
-				player.capabilities.allowEdit = true;
-				player.capabilities.isFlying = false;
-				player.noClip = false;
-				player.setInvisible(false);
-				extendedProperties.removeFromExtraVariables("ethereal");
-			} else {
-				// tick ethereal form
-				// decrease duration
-				extendedProperties.addToExtraVariables("ethereal", String.valueOf(durationLeft-1));
+			if (!inBossWorld) {
+				if (player.worldObj.isRemote) {
+					if (SpellSoundHelper.currentlyPlayingMusic != null) SpellSoundHelper.currentlyPlayingMusic.fadeOut(); // have to handle this clientside
+				}
+			} else { // in boss world
+				// some bossfight-dependent code will likely be here
 			}
-		}
 
-		if (ent instanceof EntityPlayer) {
+			if (extendedProperties.hasExtraVariable("ethereal")) { // ethereal form handling
+				int durationLeft = Integer.valueOf(extendedProperties.getExtraVariable("ethereal"));
+				if (durationLeft < 3) {
+					// deactivate form
+					ItemSoulspike.removeTagFromBoots(player.inventory.armorInventory[0]);
+					player.capabilities.disableDamage = false;
+					player.capabilities.allowEdit = true;
+					player.capabilities.isFlying = false;
+					player.noClip = false;
+					player.setInvisible(false);
+					extendedProperties.removeFromExtraVariables("ethereal");
+				} else {
+					// tick ethereal form
+					// decrease duration
+					extendedProperties.addToExtraVariables("ethereal", String.valueOf(durationLeft-1));
+				}
+			} else { // isn't ethereal
+				if (ItemSoulspike.bootsHaveEtherealTag(player.inventory.armorInventory[0])) { // but boots have tag
+					ItemSoulspike.removeTagFromBoots(player.inventory.armorInventory[0]); // remove tag; prevent possible workaround
+				}
+			}
+
 			// accelerated blocks and entities are done outside of the 5-tick performance optimisation to make them smooth
 			Map<String, String> acceleratedBlocks = extendedProperties.getExtraVariablesContains("accelerated_fast_tile_");
 			for (Map.Entry<String, String> entry : acceleratedBlocks.entrySet()) {
@@ -610,18 +823,20 @@ public class AMEventHandler{
 					}
 				}
 			}
-			int s1 = DimensionManager.getWorlds().length;
+			WorldServer[] worlds = DimensionManager.getWorlds();
+			int s1 = worlds.length;
 			try {
 				for (int l = 0; l < s1; l++) { // do this outside of for loop to save performance
-					if (l >= DimensionManager.getWorlds().length) break;
-					int s2 = DimensionManager.getWorlds()[l].loadedEntityList.size();
+					if (l >= worlds.length) break;
+					int s2 = worlds[l].loadedEntityList.size();
 					for (int f = 0; f < s2; f++) {
-						if (f >= DimensionManager.getWorlds()[l].loadedEntityList.size())
+						if (f >= worlds[l].loadedEntityList.size())
 							break; // fix for the most obscene bug ever, where it doesn't respect indexes, or arbitrarily chooses to delete entities while I'm iterating over them
-						Object entityobj = DimensionManager.getWorlds()[l].loadedEntityList.get(f);
+						Object entityobj = worlds[l].loadedEntityList.get(f);
 						if (entityobj instanceof EntityLivingBase) {
-							if (acceleratedEntitiesUUIDs.containsKey(((EntityLivingBase) entityobj).getUniqueID().toString())) {
-								for (int i = 0; i < acceleratedEntitiesUUIDs.get(((EntityLivingBase) entityobj).getUniqueID().toString()); i++) {
+							String UUID = ((EntityLivingBase) entityobj).getUniqueID().toString();
+							if (acceleratedEntitiesUUIDs.containsKey(UUID)) {
+								for (int i = 0; i < acceleratedEntitiesUUIDs.get(UUID); i++) {
 									((EntityLivingBase) entityobj).onUpdate();
 								}
 							}
@@ -645,6 +860,15 @@ public class AMEventHandler{
 
 				Map<String, String> slowedEntities = extendedProperties.getExtraVariablesContains("accelerated_slow_entity_");
 				Map<String, String> acceleratedEntities = extendedProperties.getExtraVariablesContains("accelerated_fast_entity_");
+
+				if (SkillTreeManager.instance.isSkillDisabled(SkillManager.instance.getSkill("ConcentrateTime"))) {
+					acceleratedEntities.clear();
+					acceleratedBlocks.clear();
+				}
+				if (SkillTreeManager.instance.isSkillDisabled(SkillManager.instance.getSkill("DiluteTime"))) {
+					slowedEntities.clear();
+					slowedBlocks.clear();
+				}
 
 				Map<String, String> spatialVortices = extendedProperties.getExtraVariablesContains("spatialvortex_");
 				if (spatialVortices.size() > 0) {
@@ -1204,6 +1428,46 @@ public class AMEventHandler{
 		}
 	}
 
+	// currently unused
+	private void breakTechnologyTick(EntityPlayer player) {
+		boolean changed = false;
+		for (int i = 0; i < player.inventory.getSizeInventory(); i++) {
+			ItemStack stack = player.inventory.getStackInSlot(i);
+			if (MysteriumPatchesFixesMagicka.isItemTech(stack)) { // null checking is builtin
+				player.inventory.setInventorySlotContents(i, disruptionEMP(stack));
+				changed = true;
+			}
+		}
+		if (changed && player.worldObj.isRemote) {
+			player.worldObj.playSound(player.posX, player.posY, player.posZ, "random.anvil_break", 1.0F, rand.nextFloat() * 0.1F + 0.9F, false);
+			AMCore.proxy.getLocalPlayer().addChatMessage(new ChatComponentText("You feel a wave of peculiar vibrations traversing your body. Pockets of space oddly curve and distort, and you sense something is out of place."));
+		}
+	}
+
+	private void breakTechnologyTick(EntityItem ei) {
+		ItemStack stack = ei.getEntityItem();
+		if (MysteriumPatchesFixesMagicka.isItemTech(stack)) { // null checking is builtin
+			ei.setEntityItemStack(disruptionEMP(stack));
+			ei.worldObj.playSoundEffect(ei.posX, ei.posY, ei.posZ, "random.anvil_break", 1.0F, rand.nextFloat() * 0.1F + 0.9F);
+		}
+	}
+
+	private ItemStack disruptionEMP(ItemStack stack) { // In modern warfare, weapons delivering a high energy EMP pulse are designed to disrupt communications equipment, the computers needed to operate modern warplanes, or even put the entire electrical network of a target country out of commission
+		String oldItem = MysteriumPatchesFixesMagicka.getFullId(stack.getItem());
+		boolean isRealItem = (oldItem != null);
+
+		ItemStack replacement = new ItemStack(ItemsCommonProxy.techJunk, 1 + rand.nextInt(3), rand.nextInt(5));
+		NBTTagCompound oldItemInfo = new NBTTagCompound();
+		oldItemInfo.setString("item", isRealItem ? oldItem : MysteriumPatchesFixesMagicka.getFullId(ItemsCommonProxy.itemOre)); // makeItemStack to make item based on name string, meta, nbt, etc
+		oldItemInfo.setInteger("meta", isRealItem ? stack.getItemDamage() : ItemsCommonProxy.itemOre.META_ARCANECOMPOUND);
+		oldItemInfo.setInteger("size", isRealItem ? stack.stackSize : rand.nextInt(10));
+		oldItemInfo.setTag("old_nbt", isRealItem ? stack.getTagCompound() : new NBTTagCompound());
+		replacement.setTagCompound(oldItemInfo);
+
+		stack.stackSize = 0;
+		return replacement;
+	}
+
 	public static Map<EntityPlayer, ArrayList<EntityCreature>> hallucinationMap = new HashMap<EntityPlayer, ArrayList<EntityCreature>>();
 	public static Map<EntityPlayer, ArrayList<EntityItem>> dustMap = new HashMap<EntityPlayer, ArrayList<EntityItem>>();
 	public static Map<EntityCreature, Integer> tempCurseMap = new HashMap<EntityCreature, Integer>();
@@ -1512,9 +1776,8 @@ public class AMEventHandler{
 
 	@SubscribeEvent
 	public void onEntityInteract(EntityInteractEvent event){
-		if (event.target instanceof EntityItemFrame){
+		if (!(event.entityLiving instanceof FakePlayer) && event.target instanceof EntityItemFrame)
 			AMCore.proxy.itemFrameWatcher.startWatchingFrame((EntityItemFrame)event.target);
-		}
 	}
 
 	@SubscribeEvent
@@ -1732,19 +1995,24 @@ public class AMEventHandler{
 		if (event.entityPlayer == null)
 			return;
 
-		if (!event.entityPlayer.worldObj.isRemote && ExtendedProperties.For(event.entityPlayer).getMagicLevel() <= 0 && event.item.getEntityItem().getItem() == ItemsCommonProxy.arcaneCompendium){
-			event.entityPlayer.addChatMessage(new ChatComponentText("You have unlocked the secrets of the arcane!"));
+		if (!event.entityPlayer.worldObj.isRemote && event.item.getEntityItem().getItem() == ItemsCommonProxy.arcaneCompendium){
 			AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, "shapes", true);
 			AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, "components", true);
 			AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, "modifiers", true);
-			ExtendedProperties.For(event.entityPlayer).setMagicLevelWithMana(1);
-			ExtendedProperties.For(event.entityPlayer).forceSync();
+			if (ExtendedProperties.For(event.entityPlayer).getMagicLevel() <= 0) {
+				event.entityPlayer.addChatMessage(new ChatComponentText("You have unlocked the secrets of the arcane!"));
+				ExtendedProperties.For(event.entityPlayer).setMagicLevelWithMana(1);
+				ExtendedProperties.For(event.entityPlayer).forceSync();
+			}
 			return;
 		}
 
 		if (event.item.getEntityItem().getItem() == ItemsCommonProxy.spell){
 			if (event.entityPlayer.worldObj.isRemote){
 				AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, "spell_book", false);
+				AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, "shapes", true);
+				AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, "components", true);
+				AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, "modifiers", true);
 			}
 		}else{
 			Item item = event.item.getEntityItem().getItem();

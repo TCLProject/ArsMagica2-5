@@ -41,16 +41,25 @@ import am2.spell.components.Telekinesis;
 import am2.texture.SpellIconManager;
 import am2.utility.ProxyUtilitiesClient;
 import am2.utility.RenderUtilities;
+import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
+import com.tfc.minecraft_effekseer_implementation.ActiveRenderInfo;
+import com.tfc.minecraft_effekseer_implementation.EffekCullTask;
+import com.tfc.minecraft_effekseer_implementation.EffekCullingProvider;
+import com.tfc.minecraft_effekseer_implementation.MatrixStack;
+import com.tfc.minecraft_effekseer_implementation.common.Effeks;
 import cpw.mods.fml.client.FMLClientHandler;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.registry.LanguageRegistry;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.particle.EntityDiggingFX;
+import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
@@ -69,16 +78,27 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.common.MinecraftForge;
+import net.tclproject.mysteriumlib.render.dae.hea3ven.colladamodel.client.model.lib.ModelManager;
+import net.tclproject.mysteriumlib.render.image.PopupUtils;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 
 public class ClientProxy extends CommonProxy{
+	public static final Effeks mapHandler = Effeks.getMapHandler();
+	public static final ActiveRenderInfo activerenderinfo = new ActiveRenderInfo();
 	public static SimpleBlockRenderHandler simpleBlockRenderHandler;
 	public static TechneBlockRenderHandler techneBlockRenderHandler;
-	public static int rendTimeRemaining;
+	public static MatrixStack mat = new MatrixStack();
+	public static MatrixStack matHand = new MatrixStack();
+	public static MatrixStack matHandTP = new MatrixStack();
+	@SideOnly(Side.CLIENT)
+	public static Minecraft mc;
+	public static com.tfc.minecraft_effekseer_implementation.ClientProxy proxy = new com.tfc.minecraft_effekseer_implementation.ClientProxy();
 	private ClientTickHandler clientTickHandler;
 
 	public static HashMap<PowerTypes, ArrayList<LinkedList<AMVector3>>> powerPathVisuals;
@@ -92,6 +112,7 @@ public class ClientProxy extends CommonProxy{
 		guiManager = new ClientGuiManager();
 		NetworkRegistry.INSTANCE.registerGuiHandler(AMCore.instance, guiManager);
 		clientTickHandler = new ClientTickHandler();
+		MinecraftForge.EVENT_BUS.register(new PopupUtils());
 		MinecraftForge.EVENT_BUS.register(clientTickHandler);
 		FMLCommonHandler.instance().bus().register(clientTickHandler);
 		AMNetHandler.INSTANCE.registerChannels(new AMPacketProcessorClient());
@@ -99,6 +120,12 @@ public class ClientProxy extends CommonProxy{
 		CompendiumUnlockHandler compendiumHandler = new CompendiumUnlockHandler();
 		MinecraftForge.EVENT_BUS.register(compendiumHandler);
 		FMLCommonHandler.instance().bus().register(compendiumHandler);
+	}
+
+	@Override
+	public File getBaseFolderFile(String filename)
+	{
+		return new File(Minecraft.getMinecraft().mcDataDir, filename);
 	}
 
 	@Override
@@ -113,12 +140,26 @@ public class ClientProxy extends CommonProxy{
 		FMLCommonHandler.instance().bus().register(new AMKeyBindings());
 	}
 
+	public EffekCullTask cullTask;
+
 	@Override
 	public void preinit(){
 		super.preinit();
 		utils = new ProxyUtilitiesClient();
 		blocks = new BlocksClientProxy();
 		BuffList.setupTextureOverrides();
+		AMClientEventHandler.modelManager = new ModelManager();
+		((IReloadableResourceManager) Minecraft.getMinecraft()
+				.getResourceManager()).registerReloadListener(AMClientEventHandler.modelManager);
+		OcclusionCullingInstance culling = new OcclusionCullingInstance(128, new EffekCullingProvider());
+		cullTask = new EffekCullTask(culling);
+
+		Thread cullThread = new Thread(cullTask, "EffekCullThread");
+			cullThread.setUncaughtExceptionHandler((thread, ex) -> {
+			System.out.println("The Effek CullingThread has crashed! Please report the following stacktrace!");
+			ex.printStackTrace();
+		});
+        cullThread.start();
 	}
 
 	@Override

@@ -1,0 +1,8 @@
+{
+  "effect": "arsmagica2:test.efkefc",
+  "textures": {
+	"test2.png": "arsmagica2:test1.png",
+	"test3.png": "arsmagica2:test.png"
+  },
+  "maxSpriteCount": 10000
+}

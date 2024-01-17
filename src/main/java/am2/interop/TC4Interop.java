@@ -202,6 +202,7 @@ public class TC4Interop{
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.astrocalis, 1, -1), new AspectList().add(Aspect.WATER, 5).add(Aspect.MIND, 10).add(Aspect.SENSES, 10).add(Aspect.AURA, 10).add(Aspect.SOUL, 2));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.evilBook, 1, -1), new AspectList().add(Aspect.MAGIC, 1).add(Aspect.ELDRITCH, 2));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.woodenLeg, 1, -1), new AspectList().add(Aspect.TREE, 1));
+		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.trumpet, 1, -1), new AspectList().add(Aspect.AIR, 3).add(Aspect.MECHANISM, 1));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.cowHorn, 1, -1), new AspectList().add(Aspect.BEAST, 5).add(Aspect.FIRE, 5));
 
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.flickerFocus, 1, -1), new AspectList().add(Aspect.ORDER, 2).add(Aspect.MECHANISM, 2));
@@ -214,8 +215,12 @@ public class TC4Interop{
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.magitechGoggles, 1, -1), new AspectList().add(Aspect.SENSES, 2).add(Aspect.ARMOR, 1));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.etheriumExtractor, 1, -1), new AspectList().add(Aspect.MAGIC, 2).add(Aspect.METAL, 1).add(Aspect.CRYSTAL, 1));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.soulspike, 1, -1), new AspectList().add(Aspect.SOUL, 20).add(Aspect.AURA, 15).add(Aspect.WEAPON, 10).add(Aspect.VOID, 10).add(Aspect.ENERGY, 7).add(Aspect.ENTROPY, 5).add(Aspect.ELDRITCH, 3));
+		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.manaStone, 1, -1), new AspectList().add(Aspect.MAGIC, 10).add(Aspect.METAL, 5).add(Aspect.ENERGY, 3));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.itemArcaneFishingRod, 1, -1), new AspectList().add(Aspect.MAGIC, 5).add(Aspect.VOID, 5).add(Aspect.ELDRITCH, 3));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.itemInfernalFishingRod, 1, -1), new AspectList().add(Aspect.MAGIC, 7).add(Aspect.FIRE, 14).add(Aspect.ENERGY, 7));
+		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.rainRockroseSeeds, 1, -1), new AspectList().add(Aspect.WATER, 7).add(Aspect.MAGIC, 3).add(Aspect.PLANT, 3).add(Aspect.ENTROPY, 1));
+		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.stormSawtoothSeeds, 1, -1), new AspectList().add(Aspect.WEATHER, 7).add(Aspect.MAGIC, 3).add(Aspect.PLANT, 3).add(Aspect.ENERGY, 1));
+		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.imbuedMoonflowerSeeds, 1, -1), new AspectList().add(Aspect.EARTH, 7).add(Aspect.MAGIC, 3).add(Aspect.PLANT, 3).add(Aspect.ELDRITCH, 1));
 
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.scythe, 1, -1), new AspectList().add(Aspect.TOOL, 15).add(Aspect.MOTION, 10).add(Aspect.PLANT, 5));
 		ThaumcraftApi.registerObjectTag(new ItemStack(ItemsCommonProxy.arcaneSpellbook, 1, -1), new AspectList().add(Aspect.MAGIC, 15).add(Aspect.ELDRITCH, 10).add(Aspect.VOID, 5));

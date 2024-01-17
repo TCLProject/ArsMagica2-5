@@ -4,9 +4,12 @@ import am2.api.spell.component.interfaces.ISpellComponent;
 import am2.api.spell.enums.Affinity;
 import am2.api.spell.enums.SpellModifiers;
 import am2.buffs.BuffEffectScrambleSynapses;
+import am2.items.ItemsCommonProxy;
 import am2.spell.SpellUtils;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemFishFood;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
@@ -17,7 +20,13 @@ public class ScrambleSynapses implements ISpellComponent{
 
 	@Override
 	public Object[] getRecipeItems(){
-		return new Object[0];
+		return new Object[]{
+				new ItemStack(ItemsCommonProxy.rune, 1, ItemsCommonProxy.rune.META_GREEN),
+				new ItemStack(ItemsCommonProxy.rune, 1, ItemsCommonProxy.rune.META_BROWN),
+				new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_LIFE),
+				new ItemStack(ItemsCommonProxy.itemOre, 1, ItemsCommonProxy.itemOre.META_CHIMERITE),
+				new ItemStack(Items.fish, 1, ItemFishFood.FishType.PUFFERFISH.func_150976_a()),
+		};
 	}
 
 	@Override

@@ -109,7 +109,6 @@ public class AM2WorldDecorator implements IWorldGenerator{
 			return;
 
 		if (world.provider.terrainType == WorldType.FLAT) return;
-		if (dimensionBlacklist.contains(world.provider.dimensionId)) return;
 		switch (world.provider.dimensionId){
 		case -1:
 			generateNether(random, chunkX, chunkZ, world, chunkGenerator, chunkProvider);
@@ -122,50 +121,69 @@ public class AM2WorldDecorator implements IWorldGenerator{
 	}
 
 	public void generateNether(Random random, int chunkX, int chunkZ, World world, IChunkProvider chunkGenerator, IChunkProvider chunkProvider){
-		generateOre(sunstone, 20, world, random, 5, 120, chunkX, chunkZ);
+		boolean isDimensionBlacklisted = dimensionBlacklist.contains(world.provider.dimensionId);
+
+		if ((AMCore.config.BlacklistAffectOres() && isDimensionBlacklisted) == false){
+			generateOre(sunstone, 20, world, random, 5, 120, chunkX, chunkZ);
+		}
 	}
 
 	public void generateOverworld(Random random, int chunkX, int chunkZ, World world, IChunkProvider chunkGenerator, IChunkProvider chunkProvider){
-		generateOre(vinteum, vinteumFrequency, world, random, vinteumMin, vinteumMax, chunkX, chunkZ);
-		generateOre(chimerite, chimeriteFrequency, world, random, chimeriteMin, chimeriteMax, chunkX, chunkZ);
-		generateOre(blueTopaz, topazFrequency, world, random, topazMin, topazMax, chunkX, chunkZ);
-		generateOre(sunstone, sunstoneFrequency, world, random, sunstoneMin, sunstoneMax, chunkX, chunkZ);
-
-		generateFlowers(blueOrchid, world, random, chunkX, chunkZ);
-		generateFlowers(desertNova, world, random, chunkX, chunkZ);
-		generateFlowers(tarmaRoot, world, random, chunkX, chunkZ);
+		boolean isDimensionBlacklisted = dimensionBlacklist.contains(world.provider.dimensionId);
+		boolean typeValid = false;
 
 		BiomeGenBase biome = world.getBiomeGenForCoords(chunkX << 4, chunkZ << 4);
 		Type[] biomeTypes = BiomeDictionary.getTypesForBiome(biome);
-		boolean typeValid = false;
-		for (Type type : biomeTypes){
-			if (type == Type.BEACH || type == Type.SWAMP || type == Type.JUNGLE || type == Type.PLAINS || type == Type.WATER){
-				typeValid = true;
-			}else if (type == Type.FROZEN){
-				typeValid = false;
-				break;
+		iteratorBiomeTypes:
+		for (Type type : biomeTypes) {
+			switch (type) {
+				case BEACH:
+				case SWAMP:
+				case JUNGLE:
+				case PLAINS:
+				case WATER:
+					typeValid = true;
+					break;
+				case SNOWY:
+					typeValid = false;
+					break iteratorBiomeTypes;
 			}
 		}
 
-		if (biome != BiomeGenBase.ocean && typeValid && random.nextInt(wakeChance) < 7){
-			generateFlowers(wakebloom, world, random, chunkX, chunkZ);
+		if ((AMCore.config.BlacklistAffectOres() && isDimensionBlacklisted) == false){
+			generateOre(vinteum, vinteumFrequency, world, random, vinteumMin, vinteumMax, chunkX, chunkZ);
+			generateOre(chimerite, chimeriteFrequency, world, random, chimeriteMin, chimeriteMax, chunkX, chunkZ);
+			generateOre(blueTopaz, topazFrequency, world, random, topazMin, topazMax, chunkX, chunkZ);
+			generateOre(sunstone, sunstoneFrequency, world, random, sunstoneMin, sunstoneMax, chunkX, chunkZ);
 		}
 
-		if (random.nextInt(witchChance) == 0){
-			generateTree(random.nextInt(AMCore.config.spawnHugeTrees() ? 6 : 1) == 0 ? new WitchwoodTreeHuge(true) : new WitchwoodTreeEvenMoreHuge(true), world, random, chunkX, chunkZ);
-		}
-
-		if (poolChance > 0) {
-			if (random.nextInt(poolChance) == 0) {
-				generatePools(world, random, chunkX, chunkZ);
+		if ((AMCore.config.BlacklistAffectTrees() && isDimensionBlacklisted) == false){
+			if (random.nextInt(witchChance) == 0){
+				generateTree(random.nextInt(AMCore.config.spawnHugeTrees() ? 6 : 1) == 0 ? new WitchwoodTreeHuge(true) : new WitchwoodTreeEvenMoreHuge(true), world, random, chunkX, chunkZ);
 			}
 		}
 
-		if ((BiomeDictionary.isBiomeOfType(biome, Type.MAGICAL) || BiomeDictionary.isBiomeOfType(biome, Type.FOREST)) && random.nextInt(4) == 0 && TerrainGen.populate(chunkProvider, world, random, chunkX, chunkZ, true, LAKE) && (AMCore.config.spawnEtherMode() == 0 || AMCore.config.spawnEtherMode() == 1)){
-			int lakeGenX = (chunkX * 16) + random.nextInt(16) + 8;
-			int lakeGenY = random.nextInt(128);
-			int lakeGenZ = (chunkZ * 16) + random.nextInt(16) + 8;
-			(new WorldGenEssenceLakes(BlocksCommonProxy.liquidEssence)).generate(world, random, lakeGenX, lakeGenY, lakeGenZ);
+		if ((AMCore.config.BlacklistAffectFlora() && isDimensionBlacklisted) == false){
+			generateFlowers(blueOrchid, world, random, chunkX, chunkZ);
+			generateFlowers(desertNova, world, random, chunkX, chunkZ);
+			generateFlowers(tarmaRoot, world, random, chunkX, chunkZ);
+			if (biome != BiomeGenBase.ocean && typeValid && random.nextInt(wakeChance) < 7){
+				generateFlowers(wakebloom, world, random, chunkX, chunkZ);
+			}
+		}
+
+		if ((AMCore.config.BlacklistAffectPools() && isDimensionBlacklisted) == false){
+			if (poolChance > 0){
+				if (random.nextInt(poolChance) == 0){
+					generatePools(world, random, chunkX, chunkZ);
+				}
+			}
+			if ((BiomeDictionary.isBiomeOfType(biome, Type.MAGICAL) || BiomeDictionary.isBiomeOfType(biome, Type.FOREST)) && random.nextInt(4) == 0 && TerrainGen.populate(chunkProvider, world, random, chunkX, chunkZ, true, LAKE) && (AMCore.config.spawnEtherMode() == 0 || AMCore.config.spawnEtherMode() == 1)){
+				int lakeGenX = (chunkX * 16) + random.nextInt(16) + 8;
+				int lakeGenY = random.nextInt(128);
+				int lakeGenZ = (chunkZ * 16) + random.nextInt(16) + 8;
+				(new WorldGenEssenceLakes(BlocksCommonProxy.liquidEssence)).generate(world, random, lakeGenX, lakeGenY, lakeGenZ);
+			}
 		}
 	}
 

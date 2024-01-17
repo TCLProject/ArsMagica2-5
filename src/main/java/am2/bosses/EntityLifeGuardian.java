@@ -148,6 +148,11 @@ public class EntityLifeGuardian extends AM2Boss{
 	}
 
 	@Override
+	protected String getMusic(){
+		return "arsmagica2:mob.boss.greensymphony";
+	}
+
+	@Override
 	public String getAttackSound(){
 		return "arsmagica2:mob.lifeguardian.heal";
 	}
@@ -161,6 +166,11 @@ public class EntityLifeGuardian extends AM2Boss{
 
 		for (int j = 0; j < i; j++){
 			this.entityDropItem(new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_LIFE), 0.0f);
+		}
+
+		int h = rand.nextInt(10);
+		if (h < 4 && par1){
+			this.entityDropItem(new ItemStack(ItemsCommonProxy.recordGreens), 0.0f);
 		}
 
 		i = rand.nextInt(10);

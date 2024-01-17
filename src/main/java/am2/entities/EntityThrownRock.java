@@ -15,6 +15,7 @@ import am2.particles.ParticleColorShift;
 import am2.particles.ParticleHoldPosition;
 import am2.spell.SpellHelper;
 import am2.spell.SpellUtils;
+import am2.spell.components.FireDamage;
 import am2.spell.modifiers.Colour;
 import am2.utility.MathUtilities;
 import net.minecraft.client.Minecraft;
@@ -286,8 +287,12 @@ public class EntityThrownRock extends EntityLiving{
 			List<EntityLivingBase> ents = worldObj.getEntitiesWithinAABB(EntityLivingBase.class, boundingBox.expand(5, 5, 5));
 			for (EntityLivingBase e : ents){
 				if (e == throwingEntity) continue;
-				if (this.getEntitySenses().canSee(e))
+				if (this.getEntitySenses().canSee(e)) {
 					SpellHelper.instance.attackTargetSpecial(null, e, DamageSources.causeEntityMagicDamage(throwingEntity), damage);
+				}
+				if (FireDamage.isElbWerewolf(e)) {
+					FireDamage.causeUnblockableDamage(e, damage);
+				}
 			}
 		}else{
 

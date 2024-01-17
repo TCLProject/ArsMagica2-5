@@ -23,7 +23,7 @@ public class TargetPlayers implements ISpellModifier{
 		return new Object[]{
 				ItemsCommonProxy.playerFocus,
 				Items.arrow,
-				new ItemStack(Blocks.skull, 1, 3), // player head (obtained via dismembering, etc)
+				new ItemStack(Items.skull, 1, 3), // player head (obtained via dismembering, etc)
 		};
 	}
 

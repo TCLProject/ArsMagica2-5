@@ -9,7 +9,9 @@ import am2.buffs.BuffEffectFrostSlowed;
 import am2.damage.DamageSources;
 import am2.particles.*;
 import am2.spell.SpellHelper;
+import am2.spell.SpellSoundHelper;
 import am2.spell.SpellUtils;
+import am2.spell.components.FireDamage;
 import am2.spell.modifiers.Colour;
 import am2.utility.DummyEntityPlayer;
 import net.minecraft.entity.Entity;
@@ -152,6 +154,10 @@ public class EntitySpellEffect extends Entity{
 	public void setDead(){
 		if (dummycaster instanceof DummyEntityPlayer)
 			dummycaster.setDead();
+		if (worldObj.isRemote) {
+			SpellSoundHelper.stopPlayingLoopingSound("arsmagica2:spell.loop.fire");
+			SpellSoundHelper.stopPlayingLoopingSound("arsmagica2:spell.loop.air");
+		}
 		super.setDead();
 	}
 
@@ -276,7 +282,7 @@ public class EntitySpellEffect extends Entity{
 				}
 			}
 
-			//TODO: SoundHelper.instance.loopSound(worldObj, (float)posX, (float)posY, (float)posZ, "arsmagica2:spell.loop.fire", 1.0f);
+			if (worldObj.isRemote) SpellSoundHelper.playLoopingSound((float)posX, (float)posY, (float)posZ, "arsmagica2:spell.loop.fire", 1.0f, 1.0f, "arsmagica2:spell.loop.fire");
 		}else{
 			List<Entity> possibleTargets = worldObj.getEntitiesWithinAABB(EntityLivingBase.class, AxisAlignedBB.getBoundingBox(posX - radius, posY - 1, posZ - radius, posX + radius, posY + 3, posZ + radius));
 			for (Entity e : possibleTargets){
@@ -289,7 +295,9 @@ public class EntitySpellEffect extends Entity{
 					double lastVelZ = e.motionZ;
 
 					float damage = 0.75f * this.dataWatcher.getWatchableObjectFloat(WATCHER_DAMAGEBONUS);
-
+					if (e instanceof EntityLivingBase && FireDamage.isElbVampire(e)) {
+						FireDamage.causeUnblockableDamage((EntityLivingBase)e, damage);
+					}
 					if (SpellHelper.instance.attackTargetSpecial(null, e, DamageSources.causeEntityFireDamage(dummycaster), damage) && !(e instanceof EntityPlayer))
 						e.hurtResistantTime = 10;
 					e.addVelocity(-(e.motionX - lastVelX), -(e.motionY - lastVelY), -(e.motionZ - lastVelZ));
@@ -358,7 +366,7 @@ public class EntitySpellEffect extends Entity{
 				particle.AddParticleController(new ParticleFleePoint(particle, new AMVector3(x, y, z), 0.1f, 3f, 1, false));
 			}
 
-			//TODO: SoundHelper.instance.loopSound(worldObj, (float)posX, (float)posY, (float)posZ, "arsmagica2:spell.loop.air", 1.0f);
+			if (worldObj.isRemote) SpellSoundHelper.playLoopingSound((float)posX, (float)posY, (float)posZ, "arsmagica2:spell.loop.air", 1.0f, 1.0f, "arsmagica2:spell.loop.air");
 		}else{
 			List<Entity> possibleTargets = worldObj.getEntitiesWithinAABB(EntityLivingBase.class, AxisAlignedBB.getBoundingBox(posX - radius, posY - 1, posZ - radius, posX + radius, posY + 3, posZ + radius));
 			for (Entity e : possibleTargets){

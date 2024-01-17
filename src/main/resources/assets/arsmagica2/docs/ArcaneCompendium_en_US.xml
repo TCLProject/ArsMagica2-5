@@ -2226,9 +2226,31 @@
 				inlay circle in any biome that is predominantly water.
 				Then, while raining, throw a boat and a bucket of water
 				into the circle as homage to the many ships lost at sea.
-        		One should note, that as well as leaving behind their unique bodyparts,
-        		each guardian defeated grants a mage an additional 2,000 mana.
 			</desc>
+      <relatedEntries></relatedEntries>
+    </boss>
+    <boss id="BossFights">
+      <name>Summoning the Guardians</name>
+      <desc>
+        The Guardians are creatures as powerful as they are peculiar -
+        each one an embodiment of their essence. Defeating them is no
+        easy task, but can yield great rewards. To do so, one must
+        first summon the Guardian they wish to challenge - keeping in mind,
+        it is not summoning in the traditional sense. While the
+        Guardians are powerful and their nature not fully understood,
+        they certainly have a sense of self-preservation: they will not take a step outside
+        their respective Domains, where they are at their strongest. Summoning a Guardian
+        entails entering their Domain and fighting them on their ground, and one should
+        consider that prior to making any rash decisions. !p Each Domain is a complex,
+        multilayered phenomena, and it should be understood that the battle will
+        be taking place more metaphorically than physically; A battle of wills and magical
+        prowess, rather than swords and guns. Actions such as breaking or placing certain
+        parts of the Domain may be impossible, as they only exist in the shared consciousness of
+        yourself and the opposing Guardian. Furthermore, should you venture too far from the Guardian, the
+        link between your shared consciousnesses will disintegrate, resulting in a rapid and rough
+        teleportation back to the ritual place. !p One should note, that as well as leaving behind
+        their unique bodyparts, each guardian defeated grants a mage an additional 2,000 mana.
+      </desc>
       <relatedEntries></relatedEntries>
     </boss>
     <boss id="BossWinterGuardian">

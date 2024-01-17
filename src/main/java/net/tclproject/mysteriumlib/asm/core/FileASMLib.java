@@ -3,8 +3,6 @@ package net.tclproject.mysteriumlib.asm.core;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
-import net.tclproject.mysteriumlib.asm.core.TargetClassTransformer;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -31,7 +29,7 @@ public class FileASMLib {
 
 	    /**Registers classes with fix methods, and runs the transformer through the original classes to insert the fixes.*/
 	    void transform() throws IOException {
-	    	TargetClassTransformer transformer = new TargetClassTransformer();
+	    	MTargetClassTransformer transformer = new MTargetClassTransformer();
 	        for (File file : getFiles(".class", fixesDir)) {
 	            transformer.registerClassWithFixes(FileUtils.readFileToByteArray(file));
 	            // That just registered all the classes in the 'fixes' folder as classes with fix methods.

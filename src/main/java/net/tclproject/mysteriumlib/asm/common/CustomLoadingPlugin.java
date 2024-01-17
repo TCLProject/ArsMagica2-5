@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.Map;
 
 import am2.LogHelper;
-import am2.preloader.BytecodeTransformers;
 import net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixLoaderMagicka;
 import org.apache.logging.log4j.Level;
 
@@ -15,9 +14,9 @@ import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.asm.transformers.DeobfuscationTransformer;
 import cpw.mods.fml.relauncher.CoreModManager;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
-import net.tclproject.mysteriumlib.asm.core.ASMFix;
+import net.tclproject.mysteriumlib.asm.core.MASMFix;
 import net.tclproject.mysteriumlib.asm.core.MetaReader;
-import net.tclproject.mysteriumlib.asm.core.TargetClassTransformer;
+import net.tclproject.mysteriumlib.asm.core.MTargetClassTransformer;
 
 /**
  * Custom IFMLLoadingPlugin implementation.
@@ -48,20 +47,20 @@ public class CustomLoadingPlugin implements IFMLLoadingPlugin {
     /**
      * Returns the transformer that we are using at the current moment in time to modify classes.
      * See why we have to use two separate ones in the documentation for FirstClassTransformer.
-     * @return FirstClassTransformer if our built-in fixes haven't been applied, otherwise - CustomClassTransformer.
+     * @return FirstClassTransformer if our built-in fixes haven't been applied, otherwise - MCustomClassTransformer.
      */
-    public static TargetClassTransformer getTransformer() {
+    public static MTargetClassTransformer getTransformer() {
         return FirstClassTransformer.instance.registeredBuiltinFixes ?
-                CustomClassTransformer.instance : FirstClassTransformer.instance;
+                MCustomClassTransformer.instance : FirstClassTransformer.instance;
     }
 
     /**
-     * Registers a single manually made ASMFix.
+     * Registers a single manually made MASMFix.
      * It is not the most efficient way to make fixes, but if you want to go this way,
-     * look at how the code already there builds an ASMFix out of a fix method or just
-     * take a look at the documentation of the builder class within ASMFix.
+     * look at how the code already there builds an MASMFix out of a fix method or just
+     * take a look at the documentation of the builder class within MASMFix.
      */
-    public static void registerFix(ASMFix fix) {
+    public static void registerFix(MASMFix fix) {
         getTransformer().registerFix(fix);
     }
 

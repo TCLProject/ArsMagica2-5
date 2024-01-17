@@ -7,10 +7,13 @@ import am2.api.power.PowerTypes;
 import am2.api.spell.component.interfaces.ISpellModifier;
 import am2.api.spell.enums.SpellModifiers;
 import am2.blocks.tileentities.*;
+import am2.blocks.tileentities.presets.SimpleSyncedTE;
 import am2.bosses.BossActions;
 import am2.bosses.IArsMagicaBoss;
 import am2.buffs.BuffList;
 import am2.containers.ContainerMagiciansWorkbench;
+import am2.customdata.CustomChunkData;
+import am2.customdata.CustomGameData;
 import am2.customdata.CustomWorldData;
 import am2.guis.AMGuiHelper;
 import am2.guis.ArsMagicaGuiIdList;
@@ -28,6 +31,8 @@ import am2.spell.SpellHelper;
 import am2.spell.SpellUtils;
 import am2.spell.modifiers.Colour;
 import am2.utility.MathUtilities;
+import am2.worldgen.dynamic.DynamicBossWorldProvider;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent.ClientCustomPacketEvent;
 import cpw.mods.fml.common.network.internal.FMLNetworkHandler;
@@ -49,9 +54,12 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 import net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixesMagicka;
+import org.apache.logging.log4j.Level;
 
 import java.io.File;
 import java.io.IOException;
+
+import static am2.network.AMPacketIDs.REQUESTGAMEVARSFROMSERVERRESPONSE;
 
 public class AMPacketProcessorClient extends AMPacketProcessorServer{
 
@@ -86,8 +94,20 @@ public class AMPacketProcessorClient extends AMPacketProcessorServer{
 			case AMPacketIDs.SYNCCOMPENDIUMRESPONSE:
 				handleCompendiumSync(remaining);
 				break;
+			case AMPacketIDs.REQUESTGAMEVARSFROMCLIENT:
+				handleClientGameVarsRequest(remaining);
+				break;
 			case AMPacketIDs.SYNCWORLDDATATOCLIENTS:
 				handleSyncWorldData(remaining);
+				break;
+			case AMPacketIDs.SYNCDIMENSIONSTOCLIENT:
+				handleSyncDim(remaining);
+				break;
+			case AMPacketIDs.REQUESTGAMEVARSFROMSERVERRESPONSE:
+				CustomGameData.handleServerResponded(remaining);
+				break;
+			case AMPacketIDs.CHUNK_DATA_SYNC_TO_CLIENT:
+				handleChunkDataSync(remaining);
 				break;
 			case AMPacketIDs.MAGIC_LEVEL_UP:
 				handleMagicLevelUpResponse(remaining);
@@ -167,6 +187,9 @@ public class AMPacketProcessorClient extends AMPacketProcessorServer{
 			case AMPacketIDs.CRAFTING_ALTAR_DATA:
 				handleCraftingAltarData(remaining);
 				break;
+			case AMPacketIDs.SYNCEDSTRING_SYNC:
+				handleSyncedTEData(remaining);
+				break;
 			case AMPacketIDs.LECTERN_DATA:
 				handleLecternData(remaining);
 				break;
@@ -189,6 +212,45 @@ public class AMPacketProcessorClient extends AMPacketProcessorServer{
 				t.printStackTrace();
 			}
 		}
+	}
+
+	private void handleSyncDim(byte[] remaining) {
+		AMDataReader rdr = new AMDataReader(remaining, false);
+		int world = rdr.getInt();
+		if (DimensionManager.isDimensionRegistered(world)) {
+			AMCore.logger.log(Level.ERROR, "Dimension is already registered client side. ID: " + world);
+		} else {
+			AMCore.logger.log(Level.DEBUG, "Registering dimension client side. ID: " + world);
+			DimensionManager.registerProviderType(world, DynamicBossWorldProvider.class, false);
+			DimensionManager.registerDimension(world, world);
+		}
+	}
+
+	private void handleChunkDataSync(byte[] remaining) {
+		AMDataReader rdr = new AMDataReader(remaining, false);
+		World world = DimensionManager.getWorld(rdr.getInt());
+		if (world != null) {
+			int xPos = rdr.getInt();
+			int zPos = rdr.getInt();
+			NBTTagCompound data = rdr.getNBTTagCompound();
+			CustomChunkData.readCustomDataFromNBTForChunk(world.getChunkFromChunkCoords(xPos,zPos), data);
+		}
+	}
+
+	private void handleClientGameVarsRequest(byte[] remaining) {
+		AMDataWriter writer = new AMDataWriter();
+		NBTTagCompound gamedata = new NBTTagCompound();
+		int c = 0;
+		for (Object o : CustomGameData.getGameData().keySet()) {
+			String iS = (String) o;
+			String iValue = CustomGameData.getGameData().get(iS);
+			gamedata.setString("entry" + c, iValue);
+			gamedata.setString("entryname" + c, iS);
+			c++;
+		}
+		gamedata.setInteger("sizeofdata", CustomGameData.getGameData().size());
+		writer.add(gamedata);
+		AMNetHandler.INSTANCE.sendPacketToServer(AMPacketIDs.REQUESTGAMEVARSFROMCLIENTRESPONSE, writer.generate());
 	}
 
 	private void handleCompendiumSync(byte[] remaining) {
@@ -233,7 +295,8 @@ public class AMPacketProcessorClient extends AMPacketProcessorServer{
 		AMDataReader rdr = new AMDataReader(remaining, false);
 		TileEntity te = Minecraft.getMinecraft().theWorld.getTileEntity(rdr.getInt(), rdr.getInt(), rdr.getInt());
 		if (te == null || !(te instanceof TileEntityEntropicEnervator)) return;
-		te.readFromNBT(rdr.getNBTTagCompound());
+		NBTTagCompound tag = rdr.getNBTTagCompound();
+		((TileEntityEntropicEnervator)te).readFromNBT(tag);
 	}
 
 	private void handleCasterUpdate(byte[] remaining){
@@ -267,6 +330,13 @@ public class AMPacketProcessorClient extends AMPacketProcessorServer{
 			((TileEntityLectern)te).setStack(rdr.getItemStack());
 		else
 			((TileEntityLectern)te).setStack(null);
+	}
+
+	private void handleSyncedTEData(byte[] data){
+		AMDataReader rdr = new AMDataReader(data, false);
+		TileEntity te = Minecraft.getMinecraft().theWorld.getTileEntity(rdr.getInt(), rdr.getInt(), rdr.getInt());
+		if (te == null || !(te instanceof SimpleSyncedTE)) return;
+		((SimpleSyncedTE)te).updateSyncedString(rdr.getString());
 	}
 
 	private void handleCraftingAltarData(byte[] data){

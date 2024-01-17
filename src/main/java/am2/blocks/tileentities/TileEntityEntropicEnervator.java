@@ -58,7 +58,7 @@ public class TileEntityEntropicEnervator extends TileEntityAMPower implements II
 	}
 
 	public int getRendProgressScaled(int par1){
-		return ClientProxy.rendTimeRemaining * par1 / maxRendTime;
+		return this.rendTimeRemaining * par1 / maxRendTime;
 	}
 
 	private void setActiveTexture(){
@@ -84,12 +84,6 @@ public class TileEntityEntropicEnervator extends TileEntityAMPower implements II
 	@Override
 	public void updateEntity(){
 
-		if (worldObj.isRemote) {
-			ClientProxy.rendTimeRemaining = rendTimeRemaining;
-			// because apparently it doesn't update otherwise
-			// this is ok because only one gui can be open at a time by the client anyway,
-			// and all it affects is the client
-		}
 		if (isActive()){
 			rendTimeRemaining--;
 
@@ -104,6 +98,7 @@ public class TileEntityEntropicEnervator extends TileEntityAMPower implements II
 			if (EnervatorRecipeHelper.instance.getRecipe(this.inventory[0]) != null) {
 				rendTimeRemaining = 140;
 				setActiveTexture();
+				if (!worldObj.isRemote) sendEnervatorUpdateToClient();
 			} else{
 				rendTimeRemaining = 0;
 				setActiveTexture();

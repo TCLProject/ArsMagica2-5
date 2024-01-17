@@ -76,6 +76,8 @@ public class EntityManager implements IEntityManager{
 	public String HAL6ID = "HallucinationZombie";
 	public String HAL7ID = "HallucinationCreeper";
 
+	public String GenericID = "EntityGenericEntity";
+
 	public String ThrownSickleID = "ThrownSickle";
 	public String ThrownRockID = "ThrownRock";
 	public String ThrownArmID = "ThrownArm";
@@ -87,6 +89,7 @@ public class EntityManager implements IEntityManager{
 		int updateFrequency = 2;
 		int updateDistance = 64;
 		boolean updateVelocity = true;
+		EntityRegistry.registerModEntity(EntityGeneric.class, GenericID, 127, AMCore.instance, 80, 2, updateVelocity);
 
 		EntityRegistry.registerModEntity(EntitySpecificHallucinations.EntityHallucinationCreeper.class, HAL7ID, 126, AMCore.instance, 75, 3, updateVelocity);
 		EntityRegistry.registerModEntity(EntitySpecificHallucinations.EntityHallucinationZombie.class, HAL6ID, 125, AMCore.instance, 75, 3, updateVelocity);
@@ -138,6 +141,7 @@ public class EntityManager implements IEntityManager{
 	@SideOnly(Side.CLIENT)
 	public void registerRenderInformation(){
 		RenderingRegistry.registerEntityRenderingHandler(EntityEarthElemental.class, new RenderEarthElemental());
+		RenderingRegistry.registerEntityRenderingHandler(EntityGeneric.class, new RenderEntityGeneric(new ModelBiped(), 0.625f));
 		RenderingRegistry.registerEntityRenderingHandler(EntityFireElemental.class, new RenderFireElemental());
 		//RenderingRegistry.registerEntityRenderingHandler(EntityWisp.class, new RenderWisp(new ModelWisp(), 0.5F));
 		RenderingRegistry.registerEntityRenderingHandler(EntityBattleChicken.class, new RenderBattleChicken(new ModelBattleChicken(), 0.5f));

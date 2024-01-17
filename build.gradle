@@ -28,7 +28,7 @@ repositories {
 
 apply plugin: 'forge'
 
-version = "1.6.4"
+version = "1.6.5-indev"
 group= "am2" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "AM2"
 sourceCompatibility = 1.8
@@ -72,6 +72,7 @@ artifacts {
 }
 
 dependencies {
+    compile "net.ilexiconn:llibrary:1.5.1-1.7.10:dev"
 }
 
 processResources

@@ -14,6 +14,8 @@ import am2.armor.infusions.GenericImbuement;
 import am2.armor.infusions.ImbuementRegistry;
 import am2.bosses.EntityLifeGuardian;
 import am2.buffs.BuffList;
+import am2.damage.DamageSourceDarkNexus;
+import am2.damage.DamageSources;
 import am2.guis.AMGuiHelper;
 import am2.items.ItemManaStone;
 import am2.items.ItemSoulspike;
@@ -28,6 +30,7 @@ import am2.particles.AMLineArc;
 import am2.spell.SkillManager;
 import am2.spell.SkillTreeManager;
 import am2.spell.SpellHelper;
+import am2.spell.components.FireDamage;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
@@ -42,6 +45,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.DamageSource;
 import net.minecraft.world.World;
@@ -576,11 +580,11 @@ public class ExtendedProperties implements IExtendedProperties, IExtendedEntityP
 		if (level > maxMagicLevel) level = maxMagicLevel;
 		if (level < 0) level = 0;
 		setMagicLevel(level);
-		if (getMaxMana() > ((float)(Math.pow(level, 1.5f) * (85f * ((float)level / maxMagicLevel)) + 500f) / 2F) + 17000) {
-			setMaxMana(((float)(Math.pow(level, 1.5f) * (85f * ((float)level / maxMagicLevel)) + 500f) / 2F) + 23000); // keep world fusion ritual effect
-		} else {
+//		if (getMaxMana() > ((float)(Math.pow(level, 1.5f) * (85f * ((float)level / maxMagicLevel)) + 500f) / 2F) + 17000) {
+//			setMaxMana(((float)(Math.pow(level, 1.5f) * (85f * ((float)level / maxMagicLevel)) + 500f) / 2F) + 23000); // this isn't needed to keep the ritual effect, it autoapplies on getMaxMana
+//		} else {
 			setMaxMana((float)(Math.pow(level, 1.5f) * (85f * ((float)level / maxMagicLevel)) + 500f) / 2F); // max mana without bosses, talents or rituals is 42k
-		}
+//		}
 		setCurrentMana(getMaxMana());
 		setCurrentFatigue(0);
 		setMaxFatigue(level * 10 + 1);
@@ -621,6 +625,7 @@ public class ExtendedProperties implements IExtendedProperties, IExtendedEntityP
 						if (!this.entity.worldObj.isRemote){
 							List entitiesNear = this.entity.worldObj.getEntitiesWithinAABBExcludingEntity(this.entity, AxisAlignedBB.getBoundingBox(this.entity.posX - 5, this.entity.posY - 5, this.entity.posZ - 5, this.entity.posX + 5, this.entity.posY + 5, this.entity.posZ + 5));
 							for (Object o : entitiesNear){
+								if (!this.entity.worldObj.isRemote && !MinecraftServer.getServer().isPVPEnabled()) continue;
 								((Entity)o).attackEntityFrom(DamageSource.magic, currentFatigue / 25);
 								float f = (random.nextFloat() - 0.5F) * 0.2F;
 								float f1 = (random.nextFloat() - 0.5F) * 0.2F;
@@ -656,6 +661,9 @@ public class ExtendedProperties implements IExtendedProperties, IExtendedEntityP
 					}
 					// roll 2 does nothing: lucky roll
 				}
+				if (currentFatigue > 950){ // lvl 95+
+					FireDamage.causeUnblockableDamage(entity, entity.getMaxHealth()+10);
+				}
 				if (currentFatigue > 500){ // lvl 50+
 					int roll = random.nextInt(3);
 					if (roll == 0){
@@ -668,7 +676,7 @@ public class ExtendedProperties implements IExtendedProperties, IExtendedEntityP
 					}else if (roll == 1){
 						this.entity.worldObj.addWeatherEffect(new EntityLightningBolt(this.entity.worldObj, this.entity.posX, this.entity.posY, this.entity.posZ));
 					}else if (roll == 2){
-						for (int i = 0; i < 100; i++){
+						for (int i = 0; i < 2; i++){
 							double x = this.entity.posX + random.nextInt(10) - 5,
 									y = this.entity.posY + random.nextInt(10) - 5,
 									z = this.entity.posZ + random.nextInt(10) - 5;
@@ -681,18 +689,14 @@ public class ExtendedProperties implements IExtendedProperties, IExtendedEntityP
 								break;
 							}
 						}
-					}
-				}
-				if (currentFatigue > 950){ // lvl 95+
-					int roll = random.nextInt(3);
-					if (roll == 2){
-						this.entity.setDead();
+						currentFatigue = 0; // to prevent teleport chains
 					}
 				}
 			}
 		}
 		this.currentFatigue = currentFatigue;
 		this.setUpdateFlag(UPD_CURRENT_MANA_FATIGUE);
+		this.handleExtendedPropertySync();
 	}
 
 	public void setMaxFatigue(float maxFatigue){

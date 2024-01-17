@@ -25,11 +25,14 @@ import am2.network.AMNetHandler;
 import am2.network.AMPacketIDs;
 import am2.playerextensions.ExtendedProperties;
 import am2.spell.SpellUtils.SpellRequirements;
+import am2.spell.components.FireDamage;
 import am2.spell.modifiers.Colour;
 import am2.utility.EntityUtilities;
 import am2.utility.KeystoneUtilities;
+import cpw.mods.fml.common.Loader;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
 import net.minecraft.entity.item.EntityItem;
@@ -45,9 +48,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -362,7 +367,7 @@ public class SpellHelper{
 					if (!shape.isChanneled()){
 						world.playSound(caster.posX, caster.posY, caster.posZ, sfx, 0.4f, world.rand.nextFloat() * 0.1F + 0.9F, false);
 					}else{
-						//SoundHelper.instance.loopSound(world, (float)x, (float)y, (float)z, sfx, 0.6f);
+						if (world.isRemote) SpellSoundHelper.playLoopingSound((float)x, (float)y, (float)z, sfx, 0.6f, 1f, sfx);
 					}
 				}
 			}
@@ -441,7 +446,21 @@ public class SpellHelper{
 		boolean success = false;
 		if (target instanceof EntityDragon){
 			success = ((EntityDragon)target).attackEntityFromPart(((EntityDragon)target).dragonPartHead, damagesource, magnitude);
-		}else{
+		}else if ((Loader.isModLoaded("botania") || Loader.isModLoaded("Botania")) && target instanceof EntityLiving && (damagesource.isMagicDamage() || damagesource.isUnblockable() || damagesource.isDamageAbsolute()) && target.getClass().getSimpleName().toLowerCase().contains("doppleganger")) {
+			EntityLiving elb = (EntityLiving) target;
+			if (elb.getHealth() < magnitude) { // Should be killed
+				try {
+					Class<?> clazz = Class.forName("vazkii.botania.common.entity.EntityDoppleganger.java");
+					Method method = clazz.getMethod("dropFewItems", new Class<?>[]{boolean.class, int.class});
+					method.setAccessible(true);
+					method.invoke(target, new Object[]{true, 0});
+				} catch (Exception e) {
+					e.printStackTrace(); // How did we get here?
+				}
+			}
+			FireDamage.causeUnblockableDamage(elb, magnitude);
+			success = true;
+		} else {
 			success = target.attackEntityFrom(damagesource, magnitude);
 		}
 

@@ -46,12 +46,14 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -87,6 +89,11 @@ public class CommonProxy{
 		itemFrameWatcher = new ItemFrameWatcher();
 		pendingFlickerLinks = new ArrayList<AMVector3>();
 		cwCopyLoc = null;
+	}
+
+	public File getBaseFolderFile(String filename)
+	{
+		return MinecraftServer.getServer().getFile(filename);
 	}
 
 	public void postinit(){

@@ -362,24 +362,46 @@ public class BytecodeTransformers implements IClassTransformer{
 		return isDragonApiFilePresent;
 	}
 
-	private void checkForOpt(String path) {
-		if ((path.contains("optifine") && path.endsWith(".jar")) || (path.contains("OptiFine") && path.endsWith(".jar")) || (path.contains("Optifine") && path.endsWith(".jar"))) {
+	public static boolean checkIsChunkApiFilePresent() {
+		File file = new File(".");
+		fetchFiles(file, f -> checkForOpt(f.getAbsolutePath()));
+		return isChunkAPIFilePresent;
+	}
+
+	public static boolean checkIsRecurrentComplexFilePresent() {
+		File file = new File(".");
+		fetchFiles(file, f -> checkForOpt(f.getAbsolutePath()));
+		return isRecurrentComplexFilePresent;
+	}
+
+	private static void checkForOpt(String path) {
+		if (path.toLowerCase().contains("optifine") && path.endsWith(".jar")) {
 			System.out.println("Optifine detected! Attempting compatibility. If you do not have optifine, this is an error; report it.");
 			isOptifineFilePresent = true;
 		}
-		if ((path.contains("DragonAPI") && path.endsWith(".jar")) || (path.contains("dragonapi") && path.endsWith(".jar")) || (path.contains("Dragonapi") && path.endsWith(".jar"))) {
+		if (path.toLowerCase().contains("dragonapi") && path.endsWith(".jar")) {
 			System.out.println("DragonAPI detected! Attempting compatibility. If you do not have DragonAPI, this is an error; report it.");
 			isDragonApiFilePresent = true;
 		}
-		if ((path.contains("Thaumcraft") && path.endsWith(".jar")) || (path.contains("thaumcraft") && path.endsWith(".jar")) || (path.contains("ThaumCraft") && path.endsWith(".jar"))) {
+		if (path.toLowerCase().contains("thaumcraft") && path.endsWith(".jar")) {
 			System.out.println("Thaumcraft detected! Attempting compatibility. If you do not have Thaumcraft, this is an error; report it.");
 			isThaumcraftFilePresent = true;
 		}
+		if (path.toLowerCase().contains("chunkapi") && path.endsWith(".jar")) {
+			System.out.println("ChunkAPI detected! Attempting compatibility. If you do not have ChunkAPI, this is an error; report it.");
+			isChunkAPIFilePresent = true;
+		}
+		if ((path.toLowerCase().contains("recurrentcomplex") || path.toLowerCase().contains("reccomplex")) && path.endsWith(".jar")) {
+			System.out.println("RecurrentComplex detected! Attempting compatibility. If you do not have RecurrentComplex, this is an error; report it.");
+			isChunkAPIFilePresent = true;
+		}
 	}
 
-	public boolean isOptifineFilePresent = false;
-	public boolean isDragonApiFilePresent = false;
-	public boolean isThaumcraftFilePresent = false;
+	public static boolean isOptifineFilePresent = false;
+	public static boolean isDragonApiFilePresent = false;
+	public static boolean isThaumcraftFilePresent = false;
+	public static boolean isChunkAPIFilePresent = false;
+	public static boolean isRecurrentComplexFilePresent = false;
 
 	public static void fetchFiles(File dir, Consumer<File> fileConsumer) {
 		if (dir.isDirectory()) {

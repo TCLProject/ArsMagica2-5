@@ -106,6 +106,11 @@ public class EntityEarthGuardian extends AM2Boss{
 
 		int i = rand.nextInt(4);
 
+		int h = rand.nextInt(10);
+		if (h < 4 && par1){
+			this.entityDropItem(new ItemStack(ItemsCommonProxy.recordBlues), 0.0f);
+		}
+
 		for (int j = 0; j < i; j++){
 			this.entityDropItem(new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_EARTH), 0.0f);
 		}
@@ -140,6 +145,11 @@ public class EntityEarthGuardian extends AM2Boss{
 	@Override
 	protected String getLivingSound(){
 		return "arsmagica2:mob.earthguardian.idle";
+	}
+
+	@Override
+	protected String getMusic(){
+		return "arsmagica2:mob.boss.fightingblues";
 	}
 
 	@Override

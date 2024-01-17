@@ -13,14 +13,18 @@ import am2.particles.AMParticle;
 import am2.particles.ParticleApproachEntity;
 import am2.playerextensions.ExtendedProperties;
 import am2.spell.SpellUtils;
+import cpw.mods.fml.common.Loader;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.DamageSource;
 import net.minecraft.world.World;
 
+import java.lang.reflect.Method;
 import java.util.EnumSet;
 import java.util.Random;
 
@@ -56,6 +60,7 @@ public class LifeTap implements ISpellComponent, IRitualInteraction{
 		if (!(target instanceof EntityLivingBase)) return false;
 		if (!world.isRemote){
 			double damage = SpellUtils.instance.getModifiedDouble_Mul(2, stack, caster, target, world, 0, SpellModifiers.DAMAGE);
+			tryDrainLP((EntityLivingBase)target, damage * 1000);
 			ExtendedProperties casterProperties = ExtendedProperties.For((EntityLivingBase)target);
 			if (caster != target) {
 				ExtendedProperties p = ExtendedProperties.For((EntityLivingBase)caster);
@@ -65,13 +70,32 @@ public class LifeTap implements ISpellComponent, IRitualInteraction{
 			float manaRefunded = (float)(((damage * 0.01)) * casterProperties.getMaxMana());
 
 			if ((target).attackEntityFrom(DamageSource.outOfWorld, (int)Math.floor(damage))){
-				casterProperties.setCurrentMana(casterProperties.getCurrentMana() + manaRefunded);
-				casterProperties.forceSync();
+				if (!target.isDead && ((EntityLivingBase) target).getHealth() >= 1) {
+					casterProperties.setCurrentMana(casterProperties.getCurrentMana() + manaRefunded);
+					casterProperties.forceSync();
+				}
 			}else{
 				return false;
 			}
 		}
 		return true;
+	}
+
+	public static void tryDrainLP(EntityLivingBase elb, double LP) {
+		if ((Loader.isModLoaded("AWWayofTime") || Loader.isModLoaded("AlchemicalWizardry")) && elb instanceof EntityPlayer) {
+			EntityPlayer player = (EntityPlayer) elb;
+			try {
+				Class<?> clazz = Class.forName("WayofTime.alchemicalWizardry.api.soulNetwork.SoulNetworkHandler");
+				Method getCurrentEssence = clazz.getMethod("getCurrentEssence", new Class<?>[]{String.class});
+				Object essence = getCurrentEssence.invoke(null, new Object[]{player.getCommandSenderName()});
+				int essenceAmount = (Integer) essence;
+				int newEssenceAmount = (int)Math.max(essenceAmount - LP, 0);
+				Method setCurrentEssence = clazz.getMethod("setCurrentEssence", new Class<?>[]{String.class, int.class});
+				setCurrentEssence.invoke(null, new Object[]{player.getCommandSenderName(), newEssenceAmount});
+			} catch (Exception e) {
+				e.printStackTrace(); // How did we get here?
+			}
+		}
 	}
 
 	@Override

@@ -228,7 +228,6 @@ public class OBJModel{
 				normal.j += face.faceNormal.j;
 				normal.k += face.faceNormal.k;
 			}else{
-				//TODO: point normals where face normal doesn't exist (really shouldn't need this though for now)
 			}
 		}
 

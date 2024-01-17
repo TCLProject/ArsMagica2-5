@@ -88,19 +88,6 @@ public class Dispel implements ISpellComponent{
 			removePotionEffects((EntityLivingBase)target, effectsToRemove);
 		}
 
-		//TODO:
-		/*if (ExtendedProperties.For((EntityLivingBase)target).getNumSummons() > 0){
-			if (!world.isRemote){
-				Iterator it = world.loadedEntityList.iterator();
-				while (it.hasNext()){
-					Entity ent = (Entity)it.next();
-					if (ent instanceof EntitySummonedCreature && ((EntitySummonedCreature)ent).GetOwningEntity() == target){
-						ent.attackEntityFrom(DamageSource.outOfWorld, 5000);
-						break;
-					}
-				}
-			}
-		}*/
 		return true;
 	}
 

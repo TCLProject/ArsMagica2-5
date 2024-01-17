@@ -53,6 +53,7 @@ public class CompendiumUnlockHandler{
 				ArcaneCompendium.instance.unlockEntry("playerjournal");
 			}
 			if (event.level >= 15){
+				ArcaneCompendium.instance.unlockEntry("BossFights");
 				ArcaneCompendium.instance.unlockEntry("BossWaterGuardian");
 				ArcaneCompendium.instance.unlockEntry("BossEarthGuardian");
 				ArcaneCompendium.instance.unlockEntry("rituals");

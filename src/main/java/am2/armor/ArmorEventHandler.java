@@ -29,6 +29,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
@@ -444,6 +445,7 @@ public class ArmorEventHandler{
 					}
 					GL11.glPushMatrix();
 					GL11.glTranslated(0, 0.4, 0);
+					GL11.glColor4d(1, 1, 1, 1);
 					Minecraft.getMinecraft().getTextureManager().bindTexture(new ResourceLocation("arsmagica2:" + ResourceManager.getMobTexturePath("bosses/fire_guardian.png")));
 					ModelLibrary.instance.fireEars.saveValues = true;
 					ModelLibrary.instance.fireEars.render(event.entityPlayer, f7, f6, f4, f3, -f13, f5);
@@ -470,6 +472,7 @@ public class ArmorEventHandler{
 					GL11.glScaled(0.6, 0.6, 0.6);
 					setRotation(rotation + 1);
 					GL11.glRotated(rotation, 0, 1, 0);
+					GL11.glColor4d(1, 1, 1, 1);
 					Minecraft.getMinecraft().getTextureManager().bindTexture(new ResourceLocation("arsmagica2:" + ResourceManager.getMobTexturePath("bosses/earth_guardian.png")));
 					ModelLibrary.instance.earthArmor.saveValues = true;
 					ModelLibrary.instance.earthArmor.renderArms(event.entityPlayer, f7, f6, f4, f3, f13, f5);
@@ -497,6 +500,7 @@ public class ArmorEventHandler{
 					setRotation2(rotation2 + 0.4f);
 					GL11.glRotatef(rotation2, 0, -1, 0);
 					Minecraft.getMinecraft().getTextureManager().bindTexture(new ResourceLocation("arsmagica2:" + ResourceManager.getMobTexturePath("bosses/water_guardian.png")));
+					GL11.glColor4d(1, 1, 1, 1);
 					ModelLibrary.instance.earthArmor.saveValues = true;
 					ModelLibrary.instance.waterOrbs.render(event.entityPlayer, f7, f6, f4, f3, f13, f5);
 					GL11.glPopMatrix();

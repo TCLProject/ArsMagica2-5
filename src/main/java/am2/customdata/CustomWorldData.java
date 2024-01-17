@@ -13,25 +13,38 @@ import net.minecraft.world.WorldServer;
 import net.minecraft.world.storage.ISaveHandler;
 import net.minecraft.world.storage.SaveHandler;
 import net.minecraftforge.common.DimensionManager;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-// per-world and per-dimension data. Syncing individual variables sucks.
+// per-world (per-all-dimensions) and per-dimension data. Syncing individual variables sucks.
 public class CustomWorldData {
 
-    private static Map<Integer, HashMap<String, String>> worldDataArray = new HashMap<Integer, HashMap<String, String>>();
+    private static final Logger LOGGER = LogManager.getLogger("CustomWorldData");
+    private static Map<Integer, HashMap<String, String>> worldDataArray = new HashMap<Integer, HashMap<String, String>>(); // per dimension
+    // local dimension data *should* overwrite global world data if need be, but it's best to simply avoid duplicates
+    private static HashMap<String, String> universalWorldDataArray = new HashMap<String, String>(); // per world (all dimensions)
 
     private static final HashMap<String, String> WorldVarsFor(World world){
-        if (world == null)
-            return new HashMap<String, String>();
+        if (world == null) {
+            HashMap<String, String> reg = new HashMap<String, String>();
+            reg.putAll(universalWorldDataArray);
+            return reg;
+        }
 
         if (worldDataArray.containsKey(world.provider.dimensionId)){
-            return worldDataArray.get(world.provider.dimensionId);
+            HashMap<String, String> reg = new HashMap<String, String>();
+            reg.putAll(universalWorldDataArray); // duplicates will not occur because this is a map.
+            reg.putAll(worldDataArray.get(world.provider.dimensionId));
+            return reg;
         }else{
             HashMap<String, String> reg = new HashMap<String, String>();
+            reg.putAll(universalWorldDataArray);
             worldDataArray.put(world.provider.dimensionId, reg);
             return reg;
         }
@@ -45,27 +58,76 @@ public class CustomWorldData {
         return WorldVarsFor(world).get(varName);
     }
 
+    public static Map<String, String> getWorldVarsStartingWith(World world, String varNameStart) {
+        Map<String, String> filteredMap = new HashMap<>();
+        for (Map.Entry<String, String> var : WorldVarsFor(world).entrySet()) {
+            if(var.getKey().startsWith(varNameStart)){
+                filteredMap.put(var.getKey(), var.getValue());
+            }
+        }
+        return filteredMap;
+    }
+
+    public static void removeWorldVar(World world, String varName) {
+        if (world.isRemote) return; // Only server can set variables, client can request
+        HashMap<String, String> data = WorldVarsFor(world);
+        data.remove(varName);
+        worldDataArray.put(world.provider.dimensionId, data);
+        syncWorldVarsToClients(world, null);
+    }
+
     public static void setWorldVar(World world, String varName, String varValue) {
         if (world.isRemote) return; // Only server can set variables, client can request
-        WorldVarsFor(world).put(varName, varValue);
+        HashMap<String, String> data = WorldVarsFor(world);
+        data.put(varName, varValue);
+        worldDataArray.put(world.provider.dimensionId, data);
         syncWorldVarsToClients(world, null);
     }
 
     public static void setWorldVarNoSync(World world, String varName, String varValue) { // doesn't sync anywhere. Used for easing network load and for client updating
-        WorldVarsFor(world).put(varName, varValue);
+        HashMap<String, String> data = WorldVarsFor(world);
+        data.put(varName, varValue);
+        worldDataArray.put(world.provider.dimensionId, data);
     }
 
-    public static void processRequest(World world, String varName, String varValue, EntityPlayer requester) {
-        boolean approved = false; // custom logic will be added here in future for special cases
-        if (approved) setWorldVar(world, varName, varValue);
+    // any world can be passed into anyWorld, it does not matter. All this method needs it for is the isRemote check
+    // set a universal variable for all worlds. Can't get it directly, but can retrieve it from any individual world
+    public static void setUniversalWorldVar(World anyWorld, String varName, String varValue) {
+        if (anyWorld.isRemote) return;
+        universalWorldDataArray.put(varName, varValue);
+        syncAllWorldVarsToClients(null);
     }
 
-    public static void requestWorldVar(World world, String varName, String varValue) { // the clientside method
+    public static void setUniversalWorldVarNoSync(String varName, String varValue) {
+        universalWorldDataArray.put(varName, varValue);
+    }
+
+    public static void processRequest(World world, String varName, String varValue, EntityPlayer requester, boolean isUniversal) {
+        boolean approved = false;
+
+        if (varName.startsWith("CLIENT_")) approved = true; // more edge cases will be added in the future
+
+        if (approved) {
+            if (isUniversal) setUniversalWorldVar(world, varName, varValue);
+            else setWorldVar(world, varName, varValue);
+        }
+    }
+
+    public static void requestWorldVar(World world, String varName, String varValue) {
+        requestWorldVar(world, varName, varValue, false);
+    }
+
+    public static void requestWorldVar(World world, String varName, String varValue, boolean isUniversal) { // the clientside method
         if (world == null) return;
+        requestWorldVar(world.provider.dimensionId, varName, varValue, isUniversal);
+    }
+
+    public static void requestWorldVar(int worldID, String varName, String varValue, boolean isUniversal) {
         AMDataWriter writer = new AMDataWriter();
-        writer.add(world.provider.dimensionId);
+        writer.add(worldID);
         writer.add(varName);
         writer.add(varValue);
+        writer.add(isUniversal);
         AMNetHandler.INSTANCE.sendPacketToServer(AMPacketIDs.REQUESTWORLDDATACHANGE, writer.generate());
     }
 
@@ -104,12 +166,16 @@ public class CustomWorldData {
                             lines.add(perDimension.getKey() + ":::" + perDimensionEntries.getKey() + ":::" + perDimensionEntries.getValue());
                         }
                     }
+                    for (Map.Entry<String, String> universalEntries : universalWorldDataArray.entrySet()) {
+                        lines.add("99399" + ":::" + universalEntries.getKey() + ":::" + universalEntries.getValue()); // The chance somebody extended dimension IDs and made a dimension with the ID 99399 is, extremely slim.
+                    }
                     PrintWriter pw = new PrintWriter(saveFile);
                     for (String str : lines) pw.println(str);
                     pw.close();
                 }
             }
         } catch (Exception e) {
+            LOGGER.error("Failed saving world data! This could potentially be disastrous! Report this to the mod developer.");
             e.printStackTrace();
         }
     }
@@ -136,14 +202,17 @@ public class CustomWorldData {
                         }
 
                         // this avoids syncing the same dimension multiple times clogging up the network
+                        // considering this method is called *after* the server's loaded, getting worlds using DimensionManager from here shouldn't be an issue
                         for (String entry : lines) {
-                            setWorldVarNoSync(DimensionManager.getWorld(Integer.valueOf(entry.split(":::")[0])), entry.split(":::")[1], entry.split(":::")[2]);
+                            if (Integer.valueOf(entry.split(":::")[0]) == 99399) setUniversalWorldVarNoSync(entry.split(":::")[1], entry.split(":::")[2]);
+                            else setWorldVarNoSync(DimensionManager.getWorld(Integer.valueOf(entry.split(":::")[0])), entry.split(":::")[1], entry.split(":::")[2]);
                         }
                         syncAllWorldVarsToClients(null);
                     }
                 }
             }
         } catch (Exception e) {
+            LOGGER.error("Failed loading world data! This could potentially be disastrous! Report this to the mod developer.");
             e.printStackTrace();
         }
     }

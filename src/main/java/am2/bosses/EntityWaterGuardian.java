@@ -231,6 +231,11 @@ public class EntityWaterGuardian extends AM2Boss{
 			this.entityDropItem(new ItemStack(ItemsCommonProxy.essence, 1, ItemsCommonProxy.essence.META_WATER), 0.0f);
 		}
 
+		int h = rand.nextInt(10);
+		if (h < 4 && par1){
+			this.entityDropItem(new ItemStack(ItemsCommonProxy.recordBlues), 0.0f);
+		}
+
 		i = rand.nextInt(10);
 
 		if (i < 3){
@@ -251,6 +256,11 @@ public class EntityWaterGuardian extends AM2Boss{
 	@Override
 	protected String getLivingSound(){
 		return "arsmagica2:mob.waterguardian.idle";
+	}
+
+	@Override
+	protected String getMusic(){
+		return "arsmagica2:mob.boss.fightingblues";
 	}
 
 	@Override

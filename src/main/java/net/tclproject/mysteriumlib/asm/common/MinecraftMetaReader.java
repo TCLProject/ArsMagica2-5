@@ -123,9 +123,9 @@ public class MinecraftMetaReader extends MetaReader {
      * @return if the two names are the same.
      * */
     public static boolean checkSameMethod(String srgName, String mcpName) {
-        if (CustomLoadingPlugin.isObfuscated() && CustomClassTransformer.instance != null) {
-            int methodId = CustomClassTransformer.getMethodIndex(srgName);
-            String remappedName = CustomClassTransformer.instance.getMethodNames().get(methodId);
+        if (CustomLoadingPlugin.isObfuscated() && MCustomClassTransformer.instance != null) {
+            int methodId = MCustomClassTransformer.getMethodIndex(srgName);
+            String remappedName = MCustomClassTransformer.instance.getMethodNames().get(methodId);
             if (remappedName != null && remappedName.equals(mcpName)) {
                 return true;
             }

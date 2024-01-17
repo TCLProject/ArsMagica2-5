@@ -1,0 +1,8 @@
+{
+  "effect": "arsmagica2:scaledfirehandwithglow2.efkefc",
+  "textures": {
+	"../tktk02/Parts/Fire.png": "arsmagica2:Fire.png",
+	"../tktk02/Parts/Particle02.png": "arsmagica2:Particle02.png"
+  },
+  "maxSpriteCount": 1000
+}

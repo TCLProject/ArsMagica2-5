@@ -4,10 +4,13 @@ import am2.blocks.BlocksCommonProxy;
 import am2.blocks.tileentities.TileEntityLectern;
 import am2.entities.EntityDryad;
 import am2.items.ItemsCommonProxy;
+import am2.worldgen.dynamic.DynamicBossWorldHelper;
 import net.minecraft.block.Block;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.passive.EntityVillager;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.util.AxisAlignedBB;
@@ -23,12 +26,48 @@ public class BossSpawnHelper{
 	public int dryadsKilled;
 	public int ticksSinceLastDryadDeath;
 
+	// (make sure to +0.5 for each coordinate when using, according to the TP command)
+	public static final int[][] playerBossfightCoordinates = {
+			{981, 86, -41}, // water guardian (+YAW 0 facing SOUTH) (+Spider round, utilising arena!)
+			{3010, 47, -10}, // earth guardian
+			{4978, 36, -29}, // air guardian
+			{6935, 22, 24}, // arcane guardian (+YAW of -90 face EAST)
+			{9113, 55, 66}, // life guardian
+			{10962, 23, -43}, // nature guardian
+			{12972, 35, -66}, // lightning guardian
+			{15903, 35, 115}, // winter guardian
+			{19057, 73, 58}, // fire guardian. Note: Make night
+			{21955, 163, 51} // end guardian. (+YAW of 90) (in any case, teleports around the arena at different stages). Note: add vfx around tower
+	};
+	public static final int[][][] bossBossfightCoordinates = {
+			{{976, 86, -26}, {986, 86, -26}, {981, 88, -16}}, // water guardian
+			{{2995, 47, -19}}, // earth guardian
+			{{4958, 42, -13}, {4974, 46, -8}, {4992, 40, -25}}, // air guardian
+			{{6949, 22, 24}, {6959, 22, 24}, {6969, 22, 24}}, // arcane guardian
+			{{9099, 58, 65}, {9115, 50, 85}}, // life guardian. Second spawn is slightly more unpredictable, but we've got to have variety!
+			{{10948, 22, -40}, {10951, 20, -25}, {10966, 21, -27}}, // nature guardian
+			{{12976, 35, -47}, {12973, 37, -46}, {12971, 35, -40}}, // lightning guardian
+			{{15900, 35, 103}, {15906, 35, 103}}, // winter guardian
+			{{19081, 68, 58}, {19057, 68, 34}, {19033, 68, 58}, {19057, 68, 83}}, // fire guardian
+			{{21941, 165, 51}} // end guardian.
+	};
+
+	public static int getIntFromBoss(AM2Boss boss) {
+		if (boss instanceof EntityEarthGuardian) return 1;
+		else if (boss instanceof EntityAirGuardian) return 2;
+		else if (boss instanceof EntityArcaneGuardian) return 3;
+		else if (boss instanceof EntityLifeGuardian) return 4;
+		else if (boss instanceof EntityNatureGuardian) return 5;
+		else if (boss instanceof EntityLightningGuardian) return 6;
+		else if (boss instanceof EntityWinterGuardian) return 7;
+		else if (boss instanceof EntityFireGuardian) return 8;
+		else if (boss instanceof EntityEnderGuardian) return 9;
+		return 0; // water guardian
+	}
+
 	public static final BossSpawnHelper instance = new BossSpawnHelper();
 
-	private final HashMap<EntityLivingBase, World> queuedBosses;
-
 	private BossSpawnHelper(){
-		queuedBosses = new HashMap<EntityLivingBase, World>();
 	}
 
 	public void onDryadKilled(EntityDryad dryad){
@@ -79,7 +118,7 @@ public class BossSpawnHelper{
 		if (!world.isRemote){
 			EntityLifeGuardian guardian = new EntityLifeGuardian(world);
 			guardian.setPosition(x, y, z);
-			queuedBosses.put(guardian, world);
+			teleportPlayerAndBossToBossWorld(world, guardian);
 		}
 	}
 
@@ -124,7 +163,7 @@ public class BossSpawnHelper{
 		if (!world.isRemote){
 			EntityNatureGuardian eng = new EntityNatureGuardian(world);
 			eng.setPosition(x, y, z);
-			queuedBosses.put(eng, world);
+			teleportPlayerAndBossToBossWorld(world, eng);
 		}
 	}
 
@@ -135,14 +174,14 @@ public class BossSpawnHelper{
 			dryadsKilled = 0;
 		}
 
-		for (EntityLivingBase ent : queuedBosses.keySet()){
-			World world = queuedBosses.get(ent);
-			if (!world.isRemote){
-				world.spawnEntityInWorld(ent);
-				onBossSpawn(ent, world, (int)Math.floor(ent.posX), (int)Math.floor(ent.posY), (int)Math.floor(ent.posZ));
-			}
-		}
-		queuedBosses.clear();
+//		for (EntityLivingBase ent : queuedBosses.keySet()){
+//			World world = queuedBosses.get(ent);
+//			if (!world.isRemote){
+//				world.spawnEntityInWorld(ent);
+//				onBossSpawn(ent, world, (int)Math.floor(ent.posX), (int)Math.floor(ent.posY), (int)Math.floor(ent.posZ));
+//			}
+//		}
+//		queuedBosses.clear();
 	}
 
 	public void onItemInRing(EntityItem item, Block ringID){
@@ -200,8 +239,22 @@ public class BossSpawnHelper{
 			}
 			EntityWaterGuardian guardian = new EntityWaterGuardian(world);
 			guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-			queuedBosses.put(guardian, world);
+			teleportPlayerAndBossToBossWorld(world, guardian);
 		}
+	}
+
+	private void teleportPlayerAndBossToBossWorld(World world, AM2Boss guardian) {
+		EntityPlayer player = null;
+
+		for (Object objectPlayer : world.playerEntities){
+			EntityPlayer entityplayer1 = (EntityPlayer)objectPlayer;
+			if (guardian.getDistanceSqToEntity(entityplayer1) < (10 * 10)) {
+				player = entityplayer1;
+				break;
+			}
+		}
+
+		if (player instanceof EntityPlayerMP) DynamicBossWorldHelper.teleportPlayerToNewBossWorld((EntityPlayerMP)player, guardian);
 	}
 
 	private void checkForAirGuardianSpawn(World world, int x, int y, int z){
@@ -214,7 +267,7 @@ public class BossSpawnHelper{
 		itemsInRange.get(0).setDead();
 		EntityAirGuardian guardian = new EntityAirGuardian(world);
 		guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-		queuedBosses.put(guardian, world);
+		teleportPlayerAndBossToBossWorld(world, guardian);
 	}
 
 	private void checkForArcaneGuardianSpawn(World world, int x, int y, int z){
@@ -257,7 +310,7 @@ public class BossSpawnHelper{
 			itemsInRange.get(0).setDead();
 			EntityArcaneGuardian guardian = new EntityArcaneGuardian(world);
 			guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-			queuedBosses.put(guardian, world);
+			teleportPlayerAndBossToBossWorld(world, guardian);
 		}
 	}
 
@@ -302,7 +355,7 @@ public class BossSpawnHelper{
 
 			EntityEarthGuardian guardian = new EntityEarthGuardian(world);
 			guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-			queuedBosses.put(guardian, world);
+			teleportPlayerAndBossToBossWorld(world, guardian);
 		}
 	}
 
@@ -328,32 +381,33 @@ public class BossSpawnHelper{
 
 			EntityFireGuardian guardian = new EntityFireGuardian(world);
 			guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-			queuedBosses.put(guardian, world);
+			teleportPlayerAndBossToBossWorld(world, guardian);
 		}
 	}
 
-	private void onBossSpawn(EntityLivingBase boss, World world, int x, int y, int z){
-		if (boss instanceof EntityEarthGuardian){
-			if (world.getGameRules().getGameRuleBooleanValue("mobGriefing")){
-				for (int i = -10; i <= 10; ++i){
-					for (int j = 0; j <= 4; ++j){
-						for (int k = -10; k <= 10; ++k){
-							if (world.getBlock(x + i, y + j, z + k) != Blocks.bedrock)
-								world.func_147478_e(x + i, y + j, z + k, true);
-						}
-					}
-				}
-			}
-		}else if (boss instanceof EntityFireGuardian){
-			for (int i = -20; i <= 20; ++i){
-				for (int k = -20; k <= 20; ++k){
-					Block block = world.getBlock(x + i, y - 1, z + k);
-					if (block == Blocks.lava || block == Blocks.flowing_lava)
-						world.setBlock(x + i, y - 1, z + k, Blocks.netherrack, 0, 2);
-				}
-			}
-		}
-	}
+	// no longer needed due to custom arenas
+//	private void onBossSpawn(EntityLivingBase boss, World world, int x, int y, int z){
+//		if (boss instanceof EntityEarthGuardian){
+//			if (world.getGameRules().getGameRuleBooleanValue("mobGriefing")){
+//				for (int i = -10; i <= 10; ++i){
+//					for (int j = 0; j <= 4; ++j){
+//						for (int k = -10; k <= 10; ++k){
+//							if (world.getBlock(x + i, y + j, z + k) != Blocks.bedrock)
+//								world.func_147478_e(x + i, y + j, z + k, true);
+//						}
+//					}
+//				}
+//			}
+//		}else if (boss instanceof EntityFireGuardian){
+//			for (int i = -20; i <= 20; ++i){
+//				for (int k = -20; k <= 20; ++k){
+//					Block block = world.getBlock(x + i, y - 1, z + k);
+//					if (block == Blocks.lava || block == Blocks.flowing_lava)
+//						world.setBlock(x + i, y - 1, z + k, Blocks.netherrack, 0, 2);
+//				}
+//			}
+//		}
+//	}
 
 	public void onIceEffigyBuilt(World world, int x, int y, int z){
 		BiomeGenBase biome = world.getBiomeGenForCoords(x, z);
@@ -382,7 +436,7 @@ public class BossSpawnHelper{
 
 		EntityWinterGuardian guardian = new EntityWinterGuardian(world);
 		guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-		world.spawnEntityInWorld(guardian);
+		teleportPlayerAndBossToBossWorld(world, guardian);
 	}
 
 	public void onLightningEffigyBuilt(World world, int x, int y, int z){
@@ -398,7 +452,7 @@ public class BossSpawnHelper{
 
 		EntityLightningGuardian guardian = new EntityLightningGuardian(world);
 		guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-		world.spawnEntityInWorld(guardian);
+		teleportPlayerAndBossToBossWorld(world, guardian);
 
 		world.thunderingStrength = 1.0f;
 	}
@@ -457,7 +511,8 @@ public class BossSpawnHelper{
 
 			EntityEnderGuardian guardian = new EntityEnderGuardian(world);
 			guardian.setPosition(x + 0.5, y + 1, z + 0.5);
-			world.spawnEntityInWorld(guardian);
+//			world.spawnEntityInWorld(guardian);
+			teleportPlayerAndBossToBossWorld(world, guardian);
 		}
 	}
 
