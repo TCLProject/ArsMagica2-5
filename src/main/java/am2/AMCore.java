@@ -165,23 +165,12 @@ public class AMCore{
 			LogHelper.info("A compatible MagicBees version was not found, compat not loading.");
 		}
 
-		// Reduce onEntityLiving() lag by skipping unnecessary tasks if all the spells below are disabled.
-		Set<String> LivingEntitySpells = new HashSet<>();
-		boolean LivingEntitySpellsEnabled = false;
-
-		LivingEntitySpells.add("Accelerate");
-		LivingEntitySpells.add("Blink");
-		LivingEntitySpells.add("FortifyTime");
-		LivingEntitySpells.add("Shield");
-		LivingEntitySpells.add("Slow");
-
-		for (String spell : LivingEntitySpells) {
-			if (AMCore.skillConfig.isSkillEnabled(spell))
-				LivingEntitySpellsEnabled = true;
-			break;
-		}
-
-		AMEventHandler.EnableLivingEntitySpells = LivingEntitySpellsEnabled;
+		// Reduce onEntityLiving() lag by skipping unnecessary tasks if disabled.
+		AMEventHandler.enabled_accelerate = AMCore.skillConfig.isSkillEnabled("Accelerate");
+		AMEventHandler.enabled_slow = AMCore.skillConfig.isSkillEnabled("Slow");
+		AMEventHandler.enabled_timeFortified = AMCore.skillConfig.isSkillEnabled("FortifyTime");
+		AMEventHandler.enabled_shield = AMCore.skillConfig.isSkillEnabled("Shield");
+		AMEventHandler.enable_spatialVortex = AMCore.config.enableSpatialVortex();
 	}
 
 	private void registerFlickerOperators(){

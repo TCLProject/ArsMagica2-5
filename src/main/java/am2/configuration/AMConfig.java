@@ -74,6 +74,7 @@ public class AMConfig extends Configuration{
 	private final String KEY_AllowCompendiumUpdates = "Allow_Compendium_Updates";
 	private final String KEY_MeteorMinSpawnLevel = "Meteor_Spawn_Min_Level";
 	private final String KEY_HazardousGateways = "Hazardous_Gateways";
+	private final String KEY_EnableSpatialVortex = "EnableSpatialVortex";
 	private final String KEY_GlobalTime = "Global_Time_Manipulation";
 	private final String KEY_CanDryadsDespawn = "Can_Dryads_Despawn";
 
@@ -274,6 +275,7 @@ public class AMConfig extends Configuration{
 	private boolean candlesAreRovingLights;
 	private int meteorMinSpawnLevel;
 	private boolean hazardousGateways;
+	private boolean enableSpatialVortex;
 	private boolean disarmAffectsPlayers;
 	private boolean digBreaksTileEntities;
 	private boolean savePowerOnWorldSave;
@@ -403,6 +405,7 @@ public class AMConfig extends Configuration{
 
 		hazardousGateways = get(CATEGORY_GENERAL, KEY_HazardousGateways, true, "Set this to false in order to disable gateways sending you partial distances if you don't have enough power.").getBoolean(true);
 
+		enableSpatialVortex = get(CATEGORY_GENERAL, KEY_EnableSpatialVortex, true, "Set this to false in order to Spatial Vortex.").getBoolean(true);
 		ArmorXPInfusionFactor = get(CATEGORY_GENERAL, KEY_ArmorXPInfusionFactor, 1.0, "Alter this to change the rate at which armor XP infuses.").getDouble();
 		disarmAffectsPlayers = get(CATEGORY_GENERAL, KEY_DisarmAffectsPlayers, true, "If false, disarm won't work on players.").getBoolean(true);
 		manaCap = get(CATEGORY_GENERAL, KEY_ManaCap, 0, "Sets the maximum mana a player can have (0 for no cap)").getDouble(0);
@@ -773,6 +776,10 @@ public class AMConfig extends Configuration{
 
 	public boolean getHazardousGateways(){
 		return hazardousGateways;
+	}
+
+	public boolean enableSpatialVortex(){
+		return enableSpatialVortex;
 	}
 
 	public double getArmorXPInfusionFactor(){
