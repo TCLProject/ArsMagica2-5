@@ -59,6 +59,8 @@ import net.minecraftforge.fluids.FluidContainerRegistry.FluidContainerData;
 import net.minecraftforge.fluids.FluidRegistry;
 
 import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
 
 //@Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.7", dependencies = "required-after:AnimationAPI")
 @Mod(modid = "arsmagica2", modLanguage = "java", name = "Ars Magica 2", version = "1.6.7", dependencies = "required-after:AnimationAPI;required-after:CoFHCore")
@@ -163,6 +165,12 @@ public class AMCore{
 			LogHelper.info("A compatible MagicBees version was not found, compat not loading.");
 		}
 
+		// Reduce onEntityLiving() lag by skipping unnecessary tasks if disabled.
+		AMEventHandler.enabled_accelerate = AMCore.skillConfig.isSkillEnabled("Accelerate");
+		AMEventHandler.enabled_slow = AMCore.skillConfig.isSkillEnabled("Slow");
+		AMEventHandler.enabled_timeFortified = AMCore.skillConfig.isSkillEnabled("FortifyTime");
+		AMEventHandler.enabled_shield = AMCore.skillConfig.isSkillEnabled("Shield");
+		AMEventHandler.enable_spatialVortex = AMCore.config.enableSpatialVortex();
 	}
 
 	private void registerFlickerOperators(){

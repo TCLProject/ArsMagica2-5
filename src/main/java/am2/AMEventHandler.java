@@ -31,6 +31,8 @@ import am2.playerextensions.ExtendedProperties;
 import am2.playerextensions.RiftStorage;
 import am2.playerextensions.SkillData;
 import am2.power.PowerNodeRegistry;
+import am2.spell.SkillManager;
+import am2.spell.SkillTreeManager;
 import am2.utility.*;
 import cofh.api.energy.IEnergyHandler;
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -63,6 +65,7 @@ import net.minecraft.stats.AchievementList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraftforge.client.event.RenderBlockOverlayEvent;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.util.FakePlayer;
@@ -90,6 +93,13 @@ import static am2.PlayerTracker.storeSoulboundItemsForRespawn;
 import static am2.blocks.liquid.BlockLiquidEssence.liquidEssenceMaterial;
 
 public class AMEventHandler{
+
+	static boolean enabled_accelerate = true;
+	static boolean enabled_slow = true;
+	static boolean enabled_timeFortified = true;
+	static boolean enabled_shield = true;
+	static boolean enable_spatialVortex = true;
+
 
 	@SubscribeEvent
 	public void onPotionBrewed(PotionBrewedEvent brewEvent){
@@ -520,10 +530,13 @@ public class AMEventHandler{
 
 		EntityLivingBase ent = event.entityLiving;
 
-		if (slowedEntitiesUUIDs.containsKey(ent.getUniqueID().toString())) {
-			if (ent.ticksExisted % slowedEntitiesUUIDs.get(ent.getUniqueID().toString()) != 0) {
-				event.setCanceled(true);
-				return;
+		if (!SkillTreeManager.instance.isSkillDisabled(SkillManager.instance.getSkill("DiluteTime"))) {
+			String UUID = ent.getUniqueID().toString();
+			if (slowedEntitiesUUIDs.containsKey(UUID)) {
+				if (ent.ticksExisted % slowedEntitiesUUIDs.get(UUID) != 0) {
+					event.setCanceled(true);
+					return;
+				}
 			}
 		}
 
@@ -542,55 +555,41 @@ public class AMEventHandler{
 		if (ent instanceof EntityPlayer){
 			EntityPlayer player = (EntityPlayer)ent;
 			if (!ent.isDead){
-				if (ent.ticksExisted > 5 && ent.ticksExisted < 10 && !ent.worldObj.isRemote){
-					if (soulbound_Storage.containsKey(player.getUniqueID())){
-						HashMap<Integer, ItemStack> soulboundItems = soulbound_Storage.get(player.getUniqueID());
-						for (Integer i : soulboundItems.keySet()){
-							if (i < player.inventory.getSizeInventory()){
-								player.inventory.setInventorySlotContents(i, soulboundItems.get(i));
-							}else{
-								boolean done = false;
-								for (int l = 0; l < player.inventory.getSizeInventory(); l++){
-									if (player.inventory.getStackInSlot(l) == null){
-										player.inventory.setInventorySlotContents(l, soulboundItems.get(i));
-										done = true;
-										break;
-									}
-								}
-								if (!done) player.entityDropItem(soulboundItems.get(i), 0);
-							}
-						}
-					}
+				if (ent.ticksExisted > 5 && !ent.worldObj.isRemote){
+					if (ent.ticksExisted < 10) restoreSoulboundItems(player);
 				}
 			}
-		}
 
-		if (ent instanceof EntityPlayer && extendedProperties.hasExtraVariable("ethereal")) { // ethereal form handling
-			int durationLeft = Integer.valueOf(extendedProperties.getExtraVariable("ethereal"));
-			EntityPlayer player = (EntityPlayer) ent;
-			if (durationLeft < 3) {
-				// deactivate form
-				ItemSoulspike.removeTagFromBoots(player.inventory.armorInventory[0]);
-				player.capabilities.disableDamage = false;
-				player.capabilities.allowEdit = true;
-				player.capabilities.isFlying = false;
-				player.noClip = false;
-				player.setInvisible(false);
-				extendedProperties.removeFromExtraVariables("ethereal");
-			} else {
-				// tick ethereal form
-				// decrease duration
-				extendedProperties.addToExtraVariables("ethereal", String.valueOf(durationLeft-1));
+			if (extendedProperties.hasExtraVariable("ethereal")){ // ethereal form handling
+				int durationLeft = Integer.valueOf(extendedProperties.getExtraVariable("ethereal"));
+				if (durationLeft < 3){
+					// deactivate form
+					ItemSoulspike.removeTagFromBoots(player.inventory.armorInventory[0]);
+					player.capabilities.disableDamage = false;
+					player.capabilities.allowEdit = true;
+					player.capabilities.isFlying = false;
+					player.noClip = false;
+					player.setInvisible(false);
+					extendedProperties.removeFromExtraVariables("ethereal");
+				}else{
+					// tick ethereal form
+					// decrease duration
+					extendedProperties.addToExtraVariables("ethereal", String.valueOf(durationLeft - 1));
+				}
+			}else{ // isn't ethereal
+				if (ItemSoulspike.bootsHaveEtherealTag(player.inventory.armorInventory[0])){ // but boots have tag
+					ItemSoulspike.removeTagFromBoots(player.inventory.armorInventory[0]); // remove tag; prevent possible workaround
+				}
 			}
-		}
 
-		if (ent instanceof EntityPlayer) {
-			// accelerated blocks and entities are done outside of the 5-tick performance optimisation to make them smooth
-			Map<String, String> acceleratedBlocks = extendedProperties.getExtraVariablesContains("accelerated_fast_tile_");
-			for (Map.Entry<String, String> entry : acceleratedBlocks.entrySet()) {
-				if (Integer.valueOf(entry.getValue()) < 3) {
+			Map<String, String> acceleratedBlocks = null;
+			if (enabled_accelerate){
+			// accelerated blocks and entities are done outside the 5-tick performance optimisation to make them smooth
+			acceleratedBlocks = extendedProperties.getExtraVariablesContains("accelerated_fast_tile_");
+			for (Map.Entry<String, String> entry : acceleratedBlocks.entrySet()){
+				if (Integer.valueOf(entry.getValue()) < 3){
 					extendedProperties.removeFromExtraVariables(entry.getKey());
-				} else {
+				}else{
 					extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 1));
 					String[] entryvalues = entry.getKey().split("_");
 					int x = Integer.valueOf(entryvalues[3]);
@@ -599,374 +598,414 @@ public class AMEventHandler{
 					int dim = Integer.valueOf(entryvalues[6]);
 					int power = Integer.valueOf(entryvalues[7]);
 					World wrld = DimensionManager.getWorld(dim);
-					if (wrld != null) {
-						for (int i = 0; i < power; i++) {
-							if (wrld.getTileEntity(x, y, z) != null && wrld.getTileEntity(x, y, z).canUpdate()) {
+					if (wrld != null){
+						for (int i = 0; i < power; i++){
+							if (wrld.getTileEntity(x, y, z) != null && wrld.getTileEntity(x, y, z).canUpdate()){
 								wrld.getTileEntity(x, y, z).updateEntity();
 							}
-							if (wrld.getBlock(x, y, z).getTickRandomly() && wrld.rand.nextInt(100) == 0) {
+							if (wrld.getBlock(x, y, z).getTickRandomly() && wrld.rand.nextInt(100) == 0){
 								wrld.getBlock(x, y, z).updateTick(wrld, x, y, z, wrld.rand);
 							}
 						}
 					}
 				}
 			}
-			int s1 = DimensionManager.getWorlds().length;
-			try {
-				for (int l = 0; l < s1; l++) { // do this outside of for loop to save performance
-					if (l >= DimensionManager.getWorlds().length) break;
-					int s2 = DimensionManager.getWorlds()[l].loadedEntityList.size();
-					for (int f = 0; f < s2; f++) {
-						if (f >= DimensionManager.getWorlds()[l].loadedEntityList.size())
-							break; // fix for the most obscene bug ever, where it doesn't respect indexes, or arbitrarily chooses to delete entities while I'm iterating over them
-						Object entityobj = DimensionManager.getWorlds()[l].loadedEntityList.get(f);
-						if (entityobj instanceof EntityLivingBase) {
-							if (acceleratedEntitiesUUIDs.containsKey(((EntityLivingBase) entityobj).getUniqueID().toString())) {
-								for (int i = 0; i < acceleratedEntitiesUUIDs.get(((EntityLivingBase) entityobj).getUniqueID().toString()); i++) {
-									((EntityLivingBase) entityobj).onUpdate();
+				WorldServer[] worlds = DimensionManager.getWorlds();
+				int s1 = worlds.length;
+				try{
+					for (int l = 0; l < s1; l++){ // do this outside of for loop to save performance
+						if (l >= worlds.length) break;
+						int s2 = worlds[l].loadedEntityList.size();
+						for (int f = 0; f < s2; f++){
+							if (f >= worlds[l].loadedEntityList.size())
+								break; // fix for the most obscene bug ever, where it doesn't respect indexes, or arbitrarily chooses to delete entities while I'm iterating over them
+							Object entityobj = worlds[l].loadedEntityList.get(f);
+							if (entityobj instanceof EntityLivingBase){
+								String UUID = ((EntityLivingBase)entityobj).getUniqueID().toString();
+								if (acceleratedEntitiesUUIDs.containsKey(UUID)){
+									for (int i = 0; i < acceleratedEntitiesUUIDs.get(UUID); i++){
+										((EntityLivingBase)entityobj).onUpdate();
+									}
 								}
 							}
 						}
 					}
+				}catch (IndexOutOfBoundsException e){
+					; // sometimes it's just unavoidable
+				}catch (Exception e){
+					e.printStackTrace();
 				}
-			} catch (IndexOutOfBoundsException e) {
-				; // sometimes it's just unavoidable
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
 
-			tick++;
-			if (tick > 100000) tick = 0;
-			if ((tick % ((ent.worldObj.playerEntities.size() + 1) * 5)) == 0) { // only does behavior every 5 player ticks to ease computing load
-				// e.g. if there's 4 players, they tick like 1,2,3,4,1,2,3,4,1,2,3,4, etc (In theory, hopefully), and we pick 25th (1st), 50th (2nd), 75th(3rd), etc. ticks.
-				// there are some free ticks in-between, e.g. with 1 player it ticks every 10 ticks instead of 5. That eases load further (but causes double the duration - not a big deal for these spells).
-				Map<String, String> shieldedBlocks = extendedProperties.getExtraVariablesContains("shielded_tile_");
-				Map<String, String> slowedBlocks = extendedProperties.getExtraVariablesContains("accelerated_slow_tile_");
-				Map<String, String> loadedBlocks = extendedProperties.getExtraVariablesContains("timefortified_tile_");
+			if (enabled_accelerate || enabled_slow || enable_spatialVortex || enabled_timeFortified || enabled_shield) {
+				tick++;
+				if (tick > 100000) tick = 0;
+				if ((tick % ((ent.worldObj.playerEntities.size() + 1) * 5)) == 0){ // only does behavior every 5 player ticks to ease computing load
+					// e.g. if there's 4 players, they tick like 1,2,3,4,1,2,3,4,1,2,3,4, etc (In theory, hopefully), and we pick 25th (1st), 50th (2nd), 75th(3rd), etc. ticks.
+					// there are some free ticks in-between, e.g. with 1 player it ticks every 10 ticks instead of 5. That eases load further (but causes double the duration - not a big deal for these spells).
 
-				Map<String, String> slowedEntities = extendedProperties.getExtraVariablesContains("accelerated_slow_entity_");
-				Map<String, String> acceleratedEntities = extendedProperties.getExtraVariablesContains("accelerated_fast_entity_");
+					if (enabled_accelerate) {
+						Map<String, String> acceleratedEntities = extendedProperties.getExtraVariablesContains("accelerated_fast_entity_");
 
-				Map<String, String> spatialVortices = extendedProperties.getExtraVariablesContains("spatialvortex_");
-				if (spatialVortices.size() > 0) {
-					int[] totalenergy = new int[spatialVortices.size()];
-					int[] totalenergyExternallyLimited = new int[spatialVortices.size()];
-					int[] totaletheriumdark = new int[spatialVortices.size()];
-					int[] totaletheriumlight = new int[spatialVortices.size()];
-
-					int vIndex = 0;
-					for (Map.Entry<String, String> entry : spatialVortices.entrySet()) {
-						String[] entryvalues = entry.getKey().split("_");
-						int x = Integer.valueOf(entryvalues[1]);
-						int y = Integer.valueOf(entryvalues[2]);
-						int z = Integer.valueOf(entryvalues[3]);
-						World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-						totalenergy[vIndex] = 0;
-						totaletheriumdark[vIndex] = 0;
-						totaletheriumlight[vIndex] = 0;
-						for (int xadd = -1; xadd <= 1; xadd += 2) {
-							for (int zadd = -1; zadd <= 1; zadd += 2) {
-								TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-								if (te != null) {
-									if (te instanceof IEnergyHandler) {
-										totalenergy[vIndex] += ((IEnergyHandler) te).getEnergyStored(ForgeDirection.UNKNOWN);
-										totalenergyExternallyLimited[vIndex] += ((IEnergyHandler) te).extractEnergy(ForgeDirection.UNKNOWN, 50000, true); // sim only
-									}
-									if (te instanceof IPowerNode) {
-										totaletheriumdark[vIndex] += PowerNodeRegistry.For(thisdim).getPower((IPowerNode) te, PowerTypes.DARK);
-										totaletheriumlight[vIndex] += PowerNodeRegistry.For(thisdim).getPower((IPowerNode) te, PowerTypes.LIGHT);
-									}
-								}
+						if (SkillTreeManager.instance.isSkillDisabled(SkillManager.instance.getSkill("ConcentrateTime"))){
+							acceleratedEntities.clear();
+							acceleratedBlocks.clear();
+						}
+						for (Map.Entry<String, String> entry : acceleratedEntities.entrySet()){
+							String[] entryvalues = entry.getKey().split("_");
+							if (Integer.parseInt(entry.getValue()) < 3){
+								extendedProperties.removeFromExtraVariables(entry.getKey());
+								acceleratedEntitiesUUIDs.remove(entryvalues[4]);
+							}else{
+								extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.parseInt(entry.getValue()) - 5)); // entryvalue 4 is uuid, 3 is power
+								if (!(acceleratedEntitiesUUIDs.containsKey(entryvalues[4])))
+									acceleratedEntitiesUUIDs.put(entryvalues[4], Integer.valueOf(entryvalues[3]));
 							}
 						}
-						vIndex++;
 					}
-					if (AMCore.config.getDebugVortex()) {
-						System.out.println(Arrays.toString(totalenergy));
-						System.out.println(Arrays.toString(totalenergyExternallyLimited));
-						System.out.println(Arrays.toString(totaletheriumdark));
-						System.out.println(Arrays.toString(totaletheriumlight));
-					}
-					int[] maxE = getMaxIndex(totalenergy);
-					int[] maxD = getMaxIndex(totaletheriumdark);
-					int[] maxL = getMaxIndex(totaletheriumlight);
-					int[] minE = getMinIndex(totalenergy);
-					int[] minD = getMinIndex(totaletheriumdark);
-					int[] minL = getMinIndex(totaletheriumlight);
+					if (enabled_slow) {
+						Map<String, String> slowedBlocks = extendedProperties.getExtraVariablesContains("accelerated_slow_tile_");
+						Map<String, String> slowedEntities = extendedProperties.getExtraVariablesContains("accelerated_slow_entity_");
 
-					if (AMCore.config.getDebugVortex()) {
-						System.out.println("E" + Arrays.toString(minE));
-						System.out.println(Arrays.toString(maxE));
-						System.out.println("D" + Arrays.toString(minD));
-						System.out.println(Arrays.toString(maxD));
-						System.out.println("L" + Arrays.toString(minL));
-						System.out.println(Arrays.toString(maxL));
-					}
 
-					int halfDiffE = (maxE[1] - minE[1]) / 2;
-					int halfDiffD = (maxD[1] - minD[1]) / 2;
-					int halfDiffL = (maxL[1] - minL[1]) / 2;
-
-					if (AMCore.config.getDebugVortex()) {
-						System.out.println(halfDiffD + "," + halfDiffE + "," + halfDiffL + " half diff");
-					}
-
-					// total energy available to transfer, limited by: 50,000 per 5 ticks, half the diff between max and min, and external factors (such as device's throughput rate)
-					int toTransferE = Math.min(totalenergyExternallyLimited[maxE[0]], halfDiffE); // 50000 is the max externallyLimited can be anyways
-					int toTransferD = Math.min(50000, halfDiffD);
-					int toTransferL = Math.min(50000, halfDiffL);
-
-					if (AMCore.config.getDebugVortex()) {
-						System.out.println(toTransferD + "," + toTransferE+ "," + toTransferL +" to transfer");
-					}
-
-					int maximumEnergyMinimumVortexCanAccept = 0;
-					if (toTransferE > 0) {
-						// maximum energy we can *accept* right now (RF only)
-						int tIndex = 0;
-						for (Map.Entry<String, String> entry : spatialVortices.entrySet()) {
-							if (AMCore.config.getDebugVortex()) {
-								System.out.println(minE[0]);
+						if (SkillTreeManager.instance.isSkillDisabled(SkillManager.instance.getSkill("DiluteTime"))){
+							slowedEntities.clear();
+							slowedBlocks.clear();
+						}
+						for (Map.Entry<String, String> entry : slowedEntities.entrySet()){
+							String[] entryvalues = entry.getKey().split("_");
+							if (Integer.parseInt(entry.getValue()) < 3){
+								extendedProperties.removeFromExtraVariables(entry.getKey());
+								slowedEntitiesUUIDs.remove(entryvalues[4]);
+							}else{
+								extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.parseInt(entry.getValue()) - 5)); // entryvalue 4 is uuid, 3 is power
+								if (!(slowedEntitiesUUIDs.containsKey(entryvalues[4])))
+									slowedEntitiesUUIDs.put(entryvalues[4], Integer.valueOf(entryvalues[3]));
 							}
-							if (tIndex == minE[0]) {
+						}
+
+						for (Map.Entry<String, String> entry : slowedBlocks.entrySet()){
+							String[] entryvalues = entry.getKey().split("_");
+							if (Integer.valueOf(entry.getValue()) < 3){
+								extendedProperties.removeFromExtraVariables(entry.getKey());
+								slowedTiles.remove(entryvalues[3] + "_" + entryvalues[4] + "_" + entryvalues[5] + "_" + entryvalues[6]);
+							}else{
+								String represent = Integer.valueOf(entryvalues[3]) + "_" + Integer.valueOf(entryvalues[4]) + "_" + Integer.valueOf(entryvalues[5]) + "_" + Integer.valueOf(entryvalues[6]);
+								if (!(slowedTiles.containsKey(represent)))
+									slowedTiles.put(represent, Integer.valueOf(entryvalues[7])); // 7 is power
+								extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5));
+							}
+						}
+					}
+
+
+					if (enable_spatialVortex){
+						Map<String, String> spatialVortices = extendedProperties.getExtraVariablesContains("spatialvortex_");
+						if (spatialVortices.size() > 0){
+							int[] totalenergy = new int[spatialVortices.size()];
+							int[] totalenergyExternallyLimited = new int[spatialVortices.size()];
+							int[] totaletheriumdark = new int[spatialVortices.size()];
+							int[] totaletheriumlight = new int[spatialVortices.size()];
+
+							int vIndex = 0;
+							for (Map.Entry<String, String> entry : spatialVortices.entrySet()){
 								String[] entryvalues = entry.getKey().split("_");
 								int x = Integer.valueOf(entryvalues[1]);
 								int y = Integer.valueOf(entryvalues[2]);
 								int z = Integer.valueOf(entryvalues[3]);
 								World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-								for (int xadd = -1; xadd <= 1; xadd += 2) {
-									for (int zadd = -1; zadd <= 1; zadd += 2) {
+								totalenergy[vIndex] = 0;
+								totaletheriumdark[vIndex] = 0;
+								totaletheriumlight[vIndex] = 0;
+								for (int xadd = -1; xadd <= 1; xadd += 2){
+									for (int zadd = -1; zadd <= 1; zadd += 2){
 										TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-										if (te != null) {
-											if (te instanceof IEnergyHandler) {
-												if (AMCore.config.getDebugVortex()) {
-													System.out.println("got here!");
+										if (te != null){
+											if (te instanceof IEnergyHandler){
+												totalenergy[vIndex] += ((IEnergyHandler)te).getEnergyStored(ForgeDirection.UNKNOWN);
+												totalenergyExternallyLimited[vIndex] += ((IEnergyHandler)te).extractEnergy(ForgeDirection.UNKNOWN, 50000, true); // sim only
+											}
+											if (te instanceof IPowerNode){
+												totaletheriumdark[vIndex] += PowerNodeRegistry.For(thisdim).getPower((IPowerNode)te, PowerTypes.DARK);
+												totaletheriumlight[vIndex] += PowerNodeRegistry.For(thisdim).getPower((IPowerNode)te, PowerTypes.LIGHT);
+											}
+										}
+									}
+								}
+								vIndex++;
+							}
+							if (AMCore.config.getDebugVortex()){
+								System.out.println(Arrays.toString(totalenergy));
+								System.out.println(Arrays.toString(totalenergyExternallyLimited));
+								System.out.println(Arrays.toString(totaletheriumdark));
+								System.out.println(Arrays.toString(totaletheriumlight));
+							}
+							int[] maxE = getMaxIndex(totalenergy);
+							int[] maxD = getMaxIndex(totaletheriumdark);
+							int[] maxL = getMaxIndex(totaletheriumlight);
+							int[] minE = getMinIndex(totalenergy);
+							int[] minD = getMinIndex(totaletheriumdark);
+							int[] minL = getMinIndex(totaletheriumlight);
+
+							if (AMCore.config.getDebugVortex()){
+								System.out.println("E" + Arrays.toString(minE));
+								System.out.println(Arrays.toString(maxE));
+								System.out.println("D" + Arrays.toString(minD));
+								System.out.println(Arrays.toString(maxD));
+								System.out.println("L" + Arrays.toString(minL));
+								System.out.println(Arrays.toString(maxL));
+							}
+
+							int halfDiffE = (maxE[1] - minE[1]) / 2;
+							int halfDiffD = (maxD[1] - minD[1]) / 2;
+							int halfDiffL = (maxL[1] - minL[1]) / 2;
+
+							if (AMCore.config.getDebugVortex()){
+								System.out.println(halfDiffD + "," + halfDiffE + "," + halfDiffL + " half diff");
+							}
+
+							// total energy available to transfer, limited by: 50,000 per 5 ticks, half the diff between max and min, and external factors (such as device's throughput rate)
+							int toTransferE = Math.min(totalenergyExternallyLimited[maxE[0]], halfDiffE); // 50000 is the max externallyLimited can be anyways
+							int toTransferD = Math.min(50000, halfDiffD);
+							int toTransferL = Math.min(50000, halfDiffL);
+
+							if (AMCore.config.getDebugVortex()){
+								System.out.println(toTransferD + "," + toTransferE + "," + toTransferL + " to transfer");
+							}
+
+							int maximumEnergyMinimumVortexCanAccept = 0;
+							if (toTransferE > 0){
+								// maximum energy we can *accept* right now (RF only)
+								int tIndex = 0;
+								for (Map.Entry<String, String> entry : spatialVortices.entrySet()){
+									if (AMCore.config.getDebugVortex()){
+										System.out.println(minE[0]);
+									}
+									if (tIndex == minE[0]){
+										String[] entryvalues = entry.getKey().split("_");
+										int x = Integer.valueOf(entryvalues[1]);
+										int y = Integer.valueOf(entryvalues[2]);
+										int z = Integer.valueOf(entryvalues[3]);
+										World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
+										for (int xadd = -1; xadd <= 1; xadd += 2){
+											for (int zadd = -1; zadd <= 1; zadd += 2){
+												TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
+												if (te != null){
+													if (te instanceof IEnergyHandler){
+														if (AMCore.config.getDebugVortex()){
+															System.out.println("got here!");
+														}
+														maximumEnergyMinimumVortexCanAccept += ((IEnergyHandler)te).receiveEnergy(ForgeDirection.UNKNOWN, 50000, true); // sim only
+													}
 												}
-												maximumEnergyMinimumVortexCanAccept += ((IEnergyHandler) te).receiveEnergy(ForgeDirection.UNKNOWN, 50000, true); // sim only
+											}
+										}
+										break;
+									}
+									tIndex++;
+								}
+							}
+
+							if (AMCore.config.getDebugVortex()){
+								System.out.println(maximumEnergyMinimumVortexCanAccept + " max can accept");
+							}
+
+							int toTransferEActual = Math.min(toTransferE, maximumEnergyMinimumVortexCanAccept);
+							boolean ELeft = toTransferEActual > 0;
+							boolean LLeft = toTransferL > 0;
+							boolean DLeft = toTransferD > 0;
+
+							int localIndex = 0;
+							// energy subtraction. BEWARE: Terrible code to follow!! Prepare bleach for eyes.
+							if (ELeft){
+								int toSubtractE = toTransferEActual;
+								for (Map.Entry<String, String> entry : spatialVortices.entrySet()){
+									if (localIndex == maxE[0]){
+										String[] entryvalues = entry.getKey().split("_");
+										int x = Integer.valueOf(entryvalues[1]);
+										int y = Integer.valueOf(entryvalues[2]);
+										int z = Integer.valueOf(entryvalues[3]);
+										World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
+										for (int xadd = -1; xadd <= 1; xadd += 2){
+											for (int zadd = -1; zadd <= 1; zadd += 2){
+												TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
+												if (te != null){
+													if (te instanceof IEnergyHandler){
+														if (toSubtractE > 0)
+															toSubtractE -= ((IEnergyHandler)te).extractEnergy(ForgeDirection.UNKNOWN, toSubtractE, false); // real
+													}
+												}
 											}
 										}
 									}
+									localIndex++;
 								}
-								break;
+								localIndex = 0;
 							}
-							tIndex++;
+							if (DLeft){
+								int toSubtractD = toTransferD;
+								for (Map.Entry<String, String> entry : spatialVortices.entrySet()){
+									if (localIndex == maxD[0]){
+										String[] entryvalues = entry.getKey().split("_");
+										int x = Integer.valueOf(entryvalues[1]);
+										int y = Integer.valueOf(entryvalues[2]);
+										int z = Integer.valueOf(entryvalues[3]);
+										World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
+										for (int xadd = -1; xadd <= 1; xadd += 2){
+											for (int zadd = -1; zadd <= 1; zadd += 2){
+												TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
+												if (te != null){
+													if (te instanceof IPowerNode){
+														if (toSubtractD > 0)
+															toSubtractD -= PowerNodeRegistry.For(thisdim).consumePower((IPowerNode)te, PowerTypes.DARK, toSubtractD); // real
+													}
+												}
+											}
+										}
+									}
+									localIndex++;
+								}
+								localIndex = 0;
+							}
+							if (LLeft){
+								int toSubtractL = toTransferL;
+								for (Map.Entry<String, String> entry : spatialVortices.entrySet()){
+									if (localIndex == maxL[0]){
+										String[] entryvalues = entry.getKey().split("_");
+										int x = Integer.valueOf(entryvalues[1]);
+										int y = Integer.valueOf(entryvalues[2]);
+										int z = Integer.valueOf(entryvalues[3]);
+										World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
+										for (int xadd = -1; xadd <= 1; xadd += 2){
+											for (int zadd = -1; zadd <= 1; zadd += 2){
+												TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
+												if (te != null){
+													if (te instanceof IPowerNode){
+														if (toSubtractL > 0)
+															toSubtractL -= PowerNodeRegistry.For(thisdim).consumePower((IPowerNode)te, PowerTypes.LIGHT, toSubtractL); // real
+													}
+												}
+											}
+										}
+									}
+									localIndex++;
+								}
+							}
+
+							if (ELeft || DLeft || LLeft){
+								// actually do the energy transfer. Finally. Note: I *know* this whole algo I came up with is badly optimized, and I welcome any PRs to optimize it.
+								int fIndex = 0;
+								for (Map.Entry<String, String> entry : spatialVortices.entrySet()){
+									if (fIndex == minE[0] && ELeft){
+										String[] entryvalues = entry.getKey().split("_");
+										int x = Integer.valueOf(entryvalues[1]);
+										int y = Integer.valueOf(entryvalues[2]);
+										int z = Integer.valueOf(entryvalues[3]);
+										World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
+										for (int xadd = -1; xadd <= 1; xadd += 2){
+											for (int zadd = -1; zadd <= 1; zadd += 2){
+												TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
+												if (te != null){
+													if (te instanceof IEnergyHandler){
+														if (toTransferEActual > 0)
+															toTransferEActual -= ((IEnergyHandler)te).receiveEnergy(ForgeDirection.UNKNOWN, toTransferEActual, false); // real
+														else ELeft = false;
+													}
+												}
+											}
+										}
+									}
+									if (fIndex == minD[0] && DLeft){
+										if (AMCore.config.getDebugVortex()){
+											System.out.println(fIndex + " fIndex when minD");
+										}
+										String[] entryvalues = entry.getKey().split("_");
+										int x = Integer.valueOf(entryvalues[1]);
+										int y = Integer.valueOf(entryvalues[2]);
+										int z = Integer.valueOf(entryvalues[3]);
+										World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
+										for (int xadd = -1; xadd <= 1; xadd += 2){
+											for (int zadd = -1; zadd <= 1; zadd += 2){
+												TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
+												if (te != null){
+													if (te instanceof IPowerNode){
+														if (toTransferD > 0)
+															toTransferD -= PowerNodeRegistry.For(thisdim).insertPower((IPowerNode)te, PowerTypes.DARK, toTransferD);
+														else DLeft = false;
+													}
+												}
+											}
+										}
+									}
+									if (fIndex == minL[0] && LLeft){
+										if (AMCore.config.getDebugVortex()){
+											System.out.println(fIndex + " fIndex when minL");
+										}
+										String[] entryvalues = entry.getKey().split("_");
+										int x = Integer.valueOf(entryvalues[1]);
+										int y = Integer.valueOf(entryvalues[2]);
+										int z = Integer.valueOf(entryvalues[3]);
+										World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
+										for (int xadd = -1; xadd <= 1; xadd += 2){
+											for (int zadd = -1; zadd <= 1; zadd += 2){
+												TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
+												if (te != null){
+													if (te instanceof IPowerNode){
+														if (toTransferL > 0)
+															toTransferL -= PowerNodeRegistry.For(thisdim).insertPower((IPowerNode)te, PowerTypes.LIGHT, toTransferL);
+														else LLeft = false;
+													}
+												}
+											}
+										}
+									}
+									fIndex++;
+								}
+							}
 						}
 					}
 
-					if (AMCore.config.getDebugVortex()) {
-						System.out.println(maximumEnergyMinimumVortexCanAccept + " max can accept");
-					}
+					if (enabled_timeFortified){
+						Map<String, String> loadedBlocks = extendedProperties.getExtraVariablesContains("timefortified_tile_");
 
-					int toTransferEActual = Math.min(toTransferE, maximumEnergyMinimumVortexCanAccept);
-					boolean ELeft = toTransferEActual > 0;
-					boolean LLeft = toTransferL > 0;
-					boolean DLeft = toTransferD > 0;
+						for (Map.Entry<String, String> entry : loadedBlocks.entrySet()){
+							if (Integer.valueOf(entry.getValue()) < 3){
+								extendedProperties.removeFromExtraVariables(entry.getKey());
+								if (!world.isRemote){
+									String[] entryvalues = entry.getKey().split("_");
+									int x = Integer.valueOf(entryvalues[2]);
+									int y = Integer.valueOf(entryvalues[3]);
+									int z = Integer.valueOf(entryvalues[4]);
+									int dim = Integer.valueOf(entryvalues[5]);
+									if (DimensionManager.getWorld(dim) != null)
+										AMChunkLoader.INSTANCE.releaseStaticChunkLoad(DimensionManager.getWorld(dim).getTileEntity(x, y, z).getClass(), x, y, z, DimensionManager.getWorld(dim));
+								}
+							}else{
+								extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5));
+							}
+						}
+					}
+					if (enabled_shield){
+						Map<String, String> shieldedBlocks = extendedProperties.getExtraVariablesContains("shielded_tile_");
 
-					int localIndex = 0;
-					// energy subtraction. BEWARE: Terrible code to follow!! Prepare bleach for eyes.
-					if (ELeft) {
-						int toSubtractE = toTransferEActual;
-						for (Map.Entry<String, String> entry : spatialVortices.entrySet()) {
-							if (localIndex == maxE[0]) {
+						for (Map.Entry<String, String> entry : shieldedBlocks.entrySet()){
+							if (Integer.valueOf(entry.getValue()) < 3){
+								extendedProperties.removeFromExtraVariables(entry.getKey());
+								if (!world.isRemote){
+									String[] entryvalues = entry.getKey().split("_");
+									int x = Integer.valueOf(entryvalues[2]);
+									int y = Integer.valueOf(entryvalues[3]);
+									int z = Integer.valueOf(entryvalues[4]);
+									int dim = Integer.valueOf(entryvalues[5]);
+									forceShielded.remove(x + "_" + y + "_" + z + "_" + dim);
+								}
+							}else{
 								String[] entryvalues = entry.getKey().split("_");
-								int x = Integer.valueOf(entryvalues[1]);
-								int y = Integer.valueOf(entryvalues[2]);
-								int z = Integer.valueOf(entryvalues[3]);
-								World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-								for (int xadd = -1; xadd <= 1; xadd += 2) {
-									for (int zadd = -1; zadd <= 1; zadd += 2) {
-										TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-										if (te != null) {
-											if (te instanceof IEnergyHandler) {
-												if (toSubtractE > 0) toSubtractE -= ((IEnergyHandler) te).extractEnergy(ForgeDirection.UNKNOWN, toSubtractE, false); // real
-											}
-										}
-									}
-								}
+								String represent = Integer.valueOf(entryvalues[2]) + "_" + Integer.valueOf(entryvalues[3]) + "_" + Integer.valueOf(entryvalues[4]) + "_" + Integer.valueOf(entryvalues[5]);
+								if (!(forceShielded.contains(represent))) forceShielded.add(represent);
+								extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5));
 							}
-							localIndex++;
 						}
-						localIndex = 0;
-					}
-					if (DLeft) {
-						int toSubtractD = toTransferD;
-						for (Map.Entry<String, String> entry : spatialVortices.entrySet()) {
-							if (localIndex == maxD[0]) {
-								String[] entryvalues = entry.getKey().split("_");
-								int x = Integer.valueOf(entryvalues[1]);
-								int y = Integer.valueOf(entryvalues[2]);
-								int z = Integer.valueOf(entryvalues[3]);
-								World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-								for (int xadd = -1; xadd <= 1; xadd += 2) {
-									for (int zadd = -1; zadd <= 1; zadd += 2) {
-										TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-										if (te != null) {
-											if (te instanceof IPowerNode) {
-												if (toSubtractD > 0) toSubtractD -= PowerNodeRegistry.For(thisdim).consumePower((IPowerNode)te, PowerTypes.DARK, toSubtractD); // real
-											}
-										}
-									}
-								}
-							}
-							localIndex++;
-						}
-						localIndex = 0;
-					}
-					if (LLeft) {
-						int toSubtractL = toTransferL;
-						for (Map.Entry<String, String> entry : spatialVortices.entrySet()) {
-							if (localIndex == maxL[0]) {
-								String[] entryvalues = entry.getKey().split("_");
-								int x = Integer.valueOf(entryvalues[1]);
-								int y = Integer.valueOf(entryvalues[2]);
-								int z = Integer.valueOf(entryvalues[3]);
-								World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-								for (int xadd = -1; xadd <= 1; xadd += 2) {
-									for (int zadd = -1; zadd <= 1; zadd += 2) {
-										TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-										if (te != null) {
-											if (te instanceof IPowerNode) {
-												if (toSubtractL > 0) toSubtractL -= PowerNodeRegistry.For(thisdim).consumePower((IPowerNode)te, PowerTypes.LIGHT, toSubtractL); // real
-											}
-										}
-									}
-								}
-							}
-							localIndex++;
-						}
-					}
-
-					if (ELeft || DLeft || LLeft) {
-						// actually do the energy transfer. Finally. Note: I *know* this whole algo I came up with is badly optimized, and I welcome any PRs to optimize it.
-						int fIndex = 0;
-						for (Map.Entry<String, String> entry : spatialVortices.entrySet()) {
-							if (fIndex == minE[0] && ELeft) {
-								String[] entryvalues = entry.getKey().split("_");
-								int x = Integer.valueOf(entryvalues[1]);
-								int y = Integer.valueOf(entryvalues[2]);
-								int z = Integer.valueOf(entryvalues[3]);
-								World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-								for (int xadd = -1; xadd <= 1; xadd += 2) {
-									for (int zadd = -1; zadd <= 1; zadd += 2) {
-										TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-										if (te != null) {
-											if (te instanceof IEnergyHandler) {
-												if (toTransferEActual > 0) toTransferEActual -= ((IEnergyHandler) te).receiveEnergy(ForgeDirection.UNKNOWN, toTransferEActual, false); // real
-												else ELeft = false;
-											}
-										}
-									}
-								}
-							}
-							if (fIndex == minD[0] && DLeft) {
-								if (AMCore.config.getDebugVortex()) {
-									System.out.println(fIndex + " fIndex when minD");
-								}
-								String[] entryvalues = entry.getKey().split("_");
-								int x = Integer.valueOf(entryvalues[1]);
-								int y = Integer.valueOf(entryvalues[2]);
-								int z = Integer.valueOf(entryvalues[3]);
-								World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-								for (int xadd = -1; xadd <= 1; xadd += 2) {
-									for (int zadd = -1; zadd <= 1; zadd += 2) {
-										TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-										if (te != null) {
-											if (te instanceof IPowerNode) {
-												if (toTransferD > 0) toTransferD -= PowerNodeRegistry.For(thisdim).insertPower((IPowerNode) te, PowerTypes.DARK, toTransferD);
-												else DLeft = false;
-											}
-										}
-									}
-								}
-							}
-							if (fIndex == minL[0] && LLeft) {
-								if (AMCore.config.getDebugVortex()) {
-									System.out.println(fIndex + " fIndex when minL");
-								}
-								String[] entryvalues = entry.getKey().split("_");
-								int x = Integer.valueOf(entryvalues[1]);
-								int y = Integer.valueOf(entryvalues[2]);
-								int z = Integer.valueOf(entryvalues[3]);
-								World thisdim = DimensionManager.getWorld(Integer.valueOf(entryvalues[4]));
-								for (int xadd = -1; xadd <= 1; xadd += 2) {
-									for (int zadd = -1; zadd <= 1; zadd += 2) {
-										TileEntity te = thisdim.getTileEntity(x + xadd, y, z + zadd);
-										if (te != null) {
-											if (te instanceof IPowerNode) {
-												if (toTransferL > 0) toTransferL -= PowerNodeRegistry.For(thisdim).insertPower((IPowerNode) te, PowerTypes.LIGHT, toTransferL);
-												else LLeft = false;
-											}
-										}
-									}
-								}
-							}
-							fIndex++;
-						}
-					}
-				}
-
-				for (Map.Entry<String, String> entry : acceleratedEntities.entrySet()) {
-					String[] entryvalues = entry.getKey().split("_");
-					if (Integer.valueOf(entry.getValue()) < 3) {
-						extendedProperties.removeFromExtraVariables(entry.getKey());
-						acceleratedEntitiesUUIDs.remove(entryvalues[4]);
-					} else {
-						extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5)); // entryvalue 4 is uuid, 3 is power
-						if (!(acceleratedEntitiesUUIDs.containsKey(entryvalues[4]))) acceleratedEntitiesUUIDs.put(entryvalues[4], Integer.valueOf(entryvalues[3]));
-					}
-				}
-				for (Map.Entry<String, String> entry : slowedEntities.entrySet()) {
-					String[] entryvalues = entry.getKey().split("_");
-					if (Integer.valueOf(entry.getValue()) < 3) {
-						extendedProperties.removeFromExtraVariables(entry.getKey());
-						slowedEntitiesUUIDs.remove(entryvalues[4]);
-					} else {
-						extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5)); // entryvalue 4 is uuid, 3 is power
-						if (!(slowedEntitiesUUIDs.containsKey(entryvalues[4]))) slowedEntitiesUUIDs.put(entryvalues[4], Integer.valueOf(entryvalues[3]));
-					}
-				}
-				for (Map.Entry<String, String> entry : loadedBlocks.entrySet()) {
-					if (Integer.valueOf(entry.getValue()) < 3) {
-						extendedProperties.removeFromExtraVariables(entry.getKey());
-						if (!world.isRemote) {
-							String[] entryvalues = entry.getKey().split("_");
-							int x = Integer.valueOf(entryvalues[2]);
-							int y = Integer.valueOf(entryvalues[3]);
-							int z = Integer.valueOf(entryvalues[4]);
-							int dim = Integer.valueOf(entryvalues[5]);
-							if (DimensionManager.getWorld(dim) != null) AMChunkLoader.INSTANCE.releaseStaticChunkLoad(DimensionManager.getWorld(dim).getTileEntity(x, y, z).getClass(), x, y, z, DimensionManager.getWorld(dim));
-						}
-					} else {
-						extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5));
-					}
-				}
-				for (Map.Entry<String, String> entry : shieldedBlocks.entrySet()) {
-					if (Integer.valueOf(entry.getValue()) < 3) {
-						extendedProperties.removeFromExtraVariables(entry.getKey());
-						if (!world.isRemote) {
-							String[] entryvalues = entry.getKey().split("_");
-							int x = Integer.valueOf(entryvalues[2]);
-							int y = Integer.valueOf(entryvalues[3]);
-							int z = Integer.valueOf(entryvalues[4]);
-							int dim = Integer.valueOf(entryvalues[5]);
-							forceShielded.remove(x + "_" + y + "_" + z + "_" + dim);
-						}
-					} else {
-						String[] entryvalues = entry.getKey().split("_");
-						String represent = Integer.valueOf(entryvalues[2]) + "_" + Integer.valueOf(entryvalues[3]) + "_" + Integer.valueOf(entryvalues[4]) + "_" + Integer.valueOf(entryvalues[5]);
-						if (!(forceShielded.contains(represent))) forceShielded.add(represent);
-						extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5));
-					}
-				}
-				for (Map.Entry<String, String> entry : slowedBlocks.entrySet()) {
-					String[] entryvalues = entry.getKey().split("_");
-					if (Integer.valueOf(entry.getValue()) < 3) {
-						extendedProperties.removeFromExtraVariables(entry.getKey());
-						slowedTiles.remove(entryvalues[3] + "_" + entryvalues[4] + "_" + entryvalues[5] + "_" + entryvalues[6]);
-					} else {
-						String represent = Integer.valueOf(entryvalues[3]) + "_" + Integer.valueOf(entryvalues[4]) + "_" + Integer.valueOf(entryvalues[5]) + "_" + Integer.valueOf(entryvalues[6]);
-						if (!(slowedTiles.containsKey(represent))) slowedTiles.put(represent, Integer.valueOf(entryvalues[7])); // 7 is power
-						extendedProperties.addToExtraVariables(entry.getKey(), String.valueOf(Integer.valueOf(entry.getValue()) - 5));
 					}
 				}
 			}
@@ -1024,7 +1063,7 @@ public class AMEventHandler{
 			if (ent.worldObj.isRemote){
 				int divisor = extendedProperties.getAuraDelay() > 0 ? extendedProperties.getAuraDelay() : 1;
 				if (ent.ticksExisted % divisor == 0)
-					AMCore.instance.proxy.particleManager.spawnAuraParticles(ent);
+					AMCore.proxy.particleManager.spawnAuraParticles(ent);
 				AMCore.proxy.setViewSettings();
 			}
 
@@ -1756,6 +1795,28 @@ public class AMEventHandler{
 					(item instanceof ItemBlock && AMCore.proxy.blocks.getArsMagicaBlocks().contains(((ItemBlock)item).field_150939_a))){
 				AMNetHandler.INSTANCE.sendCompendiumUnlockPacket((EntityPlayerMP)event.entityPlayer, item.getUnlocalizedName().replace("item.", "").replace("arsmagica2:", "").replace("tile.", "") + ((meta > -1) ? "@" + meta : ""), false);
 			}
+		}
+	}
+
+	public void restoreSoulboundItems(EntityPlayer player) {
+		if (soulbound_Storage.containsKey(player.getUniqueID())){
+			HashMap<Integer, ItemStack> soulboundItems = soulbound_Storage.get(player.getUniqueID());
+			for (Integer i : soulboundItems.keySet()){
+				if (i < player.inventory.getSizeInventory()){
+					player.inventory.setInventorySlotContents(i, soulboundItems.get(i));
+				}else{
+					boolean done = false;
+					for (int l = 0; l < player.inventory.getSizeInventory(); l++){
+						if (player.inventory.getStackInSlot(l) == null){
+							player.inventory.setInventorySlotContents(l, soulboundItems.get(i));
+							done = true;
+							break;
+						}
+					}
+					if (!done) player.entityDropItem(soulboundItems.get(i), 0);
+				}
+			}
+			soulbound_Storage.remove(player.getUniqueID());
 		}
 	}
 }

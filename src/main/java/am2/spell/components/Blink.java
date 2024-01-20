@@ -39,7 +39,7 @@ public class Blink implements ISpellComponent, IRitualInteraction {
 
 	@Override
 	public boolean applyEffectBlock(ItemStack stack, World world, int blockx, int blocky, int blockz, int blockFace, double impactX, double impactY, double impactZ, EntityLivingBase caster){
-		if (world.getTileEntity(blockx, blocky, blockz) != null && caster instanceof EntityPlayer) {
+		if (AMCore.config.enableSpatialVortex() && world.getTileEntity(blockx, blocky, blockz) != null && caster instanceof EntityPlayer) {
 			if (world.getTileEntity(blockx, blocky, blockz) instanceof TileEntityBlackAurem) {
 				if (RitualShapeHelper.instance.checkForRitual(this, world, blockx, blocky, blockz) != null){
 					RitualShapeHelper.instance.consumeRitualReagents(this, world, blockx, blocky, blockz);
