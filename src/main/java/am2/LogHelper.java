@@ -6,7 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class LogHelper{
-	private static Logger logger = LogManager.getLogger("ArsMagica2");
+	private static final Logger logger = LogManager.getLogger("ArsMagica2");
 
 	public static void log(Level level, String format, Object... data){
 		logger.log(level, String.format(format, data));
@@ -35,7 +35,7 @@ public class LogHelper{
 	      // or call some kind of horrible arcane function chain (which is not documented)
 	      // this is a rather hacky way of turning on debug output if we're in a dev environment, but with the redeeming feature that it actually works
 	      // (the default logging level seems to be INFO and I can't change it easily through code)
-		if(CustomLoadingPlugin.isDevEnvironment){
+		if(!CustomLoadingPlugin.isObfuscated()){
 			log(Level.INFO, "AM2 Debug: " + format, data);
 		}
 		else{
