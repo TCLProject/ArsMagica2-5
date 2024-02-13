@@ -2,29 +2,25 @@ package am2.preloader;
 
 import am2.LogHelper;
 import net.minecraft.launchwrapper.IClassTransformer;
-
 import net.tclproject.mysteriumlib.asm.common.CustomLoadingPlugin;
-import net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesFixLoaderMagicka;
 import org.apache.logging.log4j.Level;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
-import java.lang.reflect.Field;
-import java.util.Iterator;
 
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.util.function.Consumer;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.util.Iterator;
 
-public class BytecodeTransformers implements IClassTransformer{
-	
+public class BytecodeTransformers implements IClassTransformer {
+
 	@Override
-	public byte[] transform(String name, String transformedName, byte[] bytes){
-		boolean is_obfuscated = !CustomLoadingPlugin.isDevEnvironment;
-		
-		if (transformedName.equals("am2.armor.ItemMageHood") && (CustomLoadingPlugin.foundThaumcraft || checkIsThaumcraftFilePresent())){
+	public byte[] transform(String name, String transformedName, byte[] bytes) {
+		boolean is_obfuscated = CustomLoadingPlugin.isObfuscated();
+		if(transformedName.equals("am2.armor.ItemMageHood") && CustomLoadingPlugin.foundThaumcraft) {
 			LogHelper.info("Core: Altering definition of " + transformedName + " to be thaumcraft compatible.");
 			ClassReader cr = new ClassReader(bytes);
 			ClassNode cn = new ClassNode();
@@ -37,13 +33,16 @@ public class BytecodeTransformers implements IClassTransformer{
 			cn.accept(cw);
 
 			bytes = cw.toByteArray();
-		}else if (transformedName.equals("net.minecraft.client.renderer.EntityRenderer")) {
+		}
+		else if(transformedName.equals("net.minecraft.client.renderer.EntityRenderer")) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			bytes = alterEntityRenderer(bytes, is_obfuscated);
-		}else if(name.equals("net.minecraft.server.MinecraftServer") || transformedName.equals("net.minecraft.server.MinecraftServer")) {
+		}
+		else if(name.equals("net.minecraft.server.MinecraftServer") || transformedName.equals("net.minecraft.server.MinecraftServer")) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
-			bytes =  alterServerTickrate(bytes);
-		}else if (transformedName.equals("net.minecraft.client.entity.EntityPlayerSP")){
+			bytes = alterServerTickrate(bytes);
+		}
+		else if(transformedName.equals("net.minecraft.client.entity.EntityPlayerSP")) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			bytes = alterEntityPlayerSP(bytes, is_obfuscated);
 
@@ -59,33 +58,40 @@ public class BytecodeTransformers implements IClassTransformer{
 			bytes = alterEntityPlayerMP(bytes, is_obfuscated);
 		*/
 
-		// MC r1.6.4: NetServerHandler.handleFlying, ka/a
-		// MC r1.7.10, NetHandlerPlayServer.processPlayer, nh/a
-		// }else if (transformedName.equals("net.minecraft.network.NetServerHandler")){
-		}else if (transformedName.equals("net.minecraft.network.NetHandlerPlayServer")){
+			// MC r1.6.4: NetServerHandler.handleFlying, ka/a
+			// MC r1.7.10, NetHandlerPlayServer.processPlayer, nh/a
+			// }else if (transformedName.equals("net.minecraft.network.NetServerHandler")){
+		}
+		else if(transformedName.equals("net.minecraft.network.NetHandlerPlayServer")) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			// bytes = alterNetServerHandler(bytes);
 			bytes = alterNetHandlerPlayServer(bytes, is_obfuscated);
-		}else if (transformedName.equals("net.minecraft.client.renderer.entity.RendererLivingEntity")){
+		}
+		else if(transformedName.equals("net.minecraft.client.renderer.entity.RendererLivingEntity")) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			bytes = alterRendererLivingEntity(bytes, is_obfuscated);
-		}else if (transformedName.equals("net.minecraft.world.World")){
+		}
+		else if(transformedName.equals("net.minecraft.world.World")) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			bytes = alterWorld(bytes, is_obfuscated);
-		}else if (transformedName.equals("net.minecraft.potion.PotionEffect") && !(CustomLoadingPlugin.foundDragonAPI || checkIsDragonApiFilePresent())){
+		}
+		else if(transformedName.equals("net.minecraft.potion.PotionEffect") && !CustomLoadingPlugin.foundDragonAPI) {
 			// DragonAPI already has its own way to handle potion list ID extension
 			// you get horrible crashes when the two extensions are applied at the same time
 			// also, there's no sense in duplicating effort, so we'll do nothing in that situation
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			bytes = alterPotionEffect(bytes, is_obfuscated);
-		}else if (transformedName.equals("net.minecraft.network.play.server.S1DPacketEntityEffect") && !(CustomLoadingPlugin.foundDragonAPI || checkIsDragonApiFilePresent())){
+		}
+		else if(transformedName.equals("net.minecraft.network.play.server.S1DPacketEntityEffect") && !CustomLoadingPlugin.foundDragonAPI) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			String passedname = name.replace(".", "/");
 			bytes = alterS1DPacketEntityEffect(bytes, is_obfuscated, passedname);
-		}else if (transformedName.equals("net.minecraft.client.network.NetHandlerPlayClient") && !(CustomLoadingPlugin.foundDragonAPI || checkIsDragonApiFilePresent())){
-		  LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
-		  bytes = alterNetHandlerPlayClient(bytes, is_obfuscated);
-		}else if (transformedName.equals("net.minecraft.network.play.server.S1EPacketRemoveEntityEffect") && !(CustomLoadingPlugin.foundDragonAPI || checkIsDragonApiFilePresent())){
+		}
+		else if(transformedName.equals("net.minecraft.client.network.NetHandlerPlayClient") && !CustomLoadingPlugin.foundDragonAPI) {
+			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
+			bytes = alterNetHandlerPlayClient(bytes, is_obfuscated);
+		}
+		else if(transformedName.equals("net.minecraft.network.play.server.S1EPacketRemoveEntityEffect") && !CustomLoadingPlugin.foundDragonAPI) {
 			LogHelper.info("Core: Altering definition of " + transformedName + ", " + (is_obfuscated ? " (obfuscated)" : "(not obfuscated)"));
 			bytes = alterS1EPacketRemoveEntityEffect(bytes, is_obfuscated);
 		}
@@ -99,21 +105,17 @@ public class BytecodeTransformers implements IClassTransformer{
 		ClassReader classReader = new ClassReader(bytes);
 		classReader.accept(classNode, 0);
 
-		Iterator<MethodNode> methods = classNode.methods.iterator();
-		while(methods.hasNext()) {
-			MethodNode method = methods.next();
+		for(MethodNode method: classNode.methods) {
 			if((method.name.equals("run")) && (method.desc.equals("()V"))) {
 				InsnList list = new InsnList();
-				intrucLoop: for(AbstractInsnNode node : method.instructions.toArray()) {
-
+				for(AbstractInsnNode node: method.instructions.toArray()) {
 					if(node instanceof LdcInsnNode) {
 						LdcInsnNode ldcNode = (LdcInsnNode)node;
 						if((ldcNode.cst instanceof Long) && ((Long)ldcNode.cst == 50L)) {
 							list.add(new FieldInsnNode(Opcodes.GETSTATIC, "net/tclproject/mysteriumlib/asm/fixes/MysteriumPatchesFixesMagicka", "servertickrate", "J"));
-							continue intrucLoop;
+							continue;
 						}
 					}
-
 					list.add(node);
 				}
 
@@ -128,16 +130,16 @@ public class BytecodeTransformers implements IClassTransformer{
 		return writer.toByteArray();
 	}
 
-	private byte[] alterRendererLivingEntity(byte[] bytes, boolean is_obfuscated){
+	private byte[] alterRendererLivingEntity(byte[] bytes, boolean is_obfuscated) {
 		ClassReader cr = new ClassReader(bytes);
 		ClassNode cn = new ClassNode();
 		cr.accept(cn, 0);
 		// Minecraft r1.7.10:
 		// net.minecraft.client.renderer.entity.RendererLivingEntity.java = boh.class
-		
+
 		// RendererLivingEntity.doRender = boh.a
 		// MCP mapping: boh/a (Lsv;DDDFF)V net/minecraft/client/renderer/entity/RendererLivingEntity/func_76986_a (Lnet/minecraft/entity/EntityLivingBase;DDDFF)V
-		
+
 		// RendererLivingEntity.renderLivingAt = boh.a
 		// MCP mapping: boh/a (Lsv;DDD)V net/minecraft/client/renderer/entity/RendererLivingEntity/func_77039_a (Lnet/minecraft/entity/EntityLivingBase;DDD)V
 
@@ -156,30 +158,30 @@ public class BytecodeTransformers implements IClassTransformer{
 		obf_deobf_pair method1_searchinstruction_desc = new obf_deobf_pair();
 		method1_searchinstruction_desc.setVal("(Lnet/minecraft/entity/EntityLivingBase;DDD)V", false);
 		method1_searchinstruction_desc.setVal("(Lsv;DDD)V", true);
-		
+
 		obf_deobf_pair method1_replaceinstruction_desc = new obf_deobf_pair();
 		method1_replaceinstruction_desc.setVal("(Lnet/minecraft/entity/EntityLivingBase;)V", false);
 		method1_replaceinstruction_desc.setVal("(Lsv;)V", true);
 
-		for (MethodNode mn : cn.methods){
-			if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))){
+		for(MethodNode mn: cn.methods) {
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))) {
 				AbstractInsnNode target = null;
 				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
 				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-				while (instructions.hasNext()){
+				while(instructions.hasNext()) {
 					AbstractInsnNode node = instructions.next();
-					if (node instanceof MethodInsnNode){
+					if(node instanceof MethodInsnNode) {
 						MethodInsnNode method = (MethodInsnNode)node;
-						if (method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc.getVal(is_obfuscated))){ //renderLivingAt(EntityLivingBase, double, double, double)
+						if(method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc.getVal(is_obfuscated))) { //renderLivingAt(EntityLivingBase, double, double, double)
 							target = node;
 							break;
 						}
 					}
 				}
 
-				if (target != null){
+				if(target != null) {
 					VarInsnNode aLoad = new VarInsnNode(Opcodes.ALOAD, 1);
-					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/utility/RenderUtilities", "setupShrinkRender", method1_replaceinstruction_desc.getVal(is_obfuscated));
+					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/utility/RenderUtilities", "setupShrinkRender", method1_replaceinstruction_desc.getVal(is_obfuscated), false);
 
 					mn.instructions.insert(target, aLoad);
 					mn.instructions.insert(aLoad, callout);
@@ -195,21 +197,21 @@ public class BytecodeTransformers implements IClassTransformer{
 		return cw.toByteArray();
 	}
 
-	private byte[] alterEntityRenderer(byte[] bytes, boolean is_obfuscated){
+	private byte[] alterEntityRenderer(byte[] bytes, boolean is_obfuscated) {
 		ClassReader cr = new ClassReader(bytes);
 		ClassNode cn = new ClassNode();
 		cr.accept(cn, 0);
 
 		// Minecraft r1.7.10:
 		// net.minecraft.client.renderer.EntityRenderer.java = blt.class
-		
+
 		// method 1:
 		// EntityRenderer.setupCameraTransform = blt.a
 		// MCP mapping: blt/a (FI)V net/minecraft/client/renderer/EntityRenderer/func_78479_a (FI)V
 		obf_deobf_pair method1_name = new obf_deobf_pair();
 		method1_name.setVal("setupCameraTransform", false);
 		method1_name.setVal("a", true);
-		
+
 		String method1_desc = "(FI)V";
 		// search for this function call:
 		// EntityRenderer.orientCamera = blt.g
@@ -228,9 +230,9 @@ public class BytecodeTransformers implements IClassTransformer{
 		obf_deobf_pair method2_name = new obf_deobf_pair();
 		method2_name.setVal("updateCameraAndRender", false);
 		method2_name.setVal("b", true);
-		
+
 		String method2_desc = "(F)V";
-		
+
 		// search for this function call:
 		// net.minecraft.profiler.Profiler.startSection = qi.a
 		// MCP mapping: MD: qi/a (Ljava/lang/String;)V net/minecraft/profiler/Profiler/func_76320_a (Ljava/lang/String;)V
@@ -250,67 +252,70 @@ public class BytecodeTransformers implements IClassTransformer{
 		method2_insertinstruction_desc.setVal("(Lnet/minecraft/client/renderer/EntityRenderer;FZ)Z", false);
 		method2_insertinstruction_desc.setVal("(Lblt;FZ)Z", true);
 
-		for (MethodNode mn : cn.methods){
-			if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc)){ // setupCameraTransform
+		for(MethodNode mn: cn.methods) {
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc)) { // setupCameraTransform
 				AbstractInsnNode orientCameraNode = null;
 				AbstractInsnNode gluPerspectiveNode = null;
 				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
 				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-				while (instructions.hasNext()){
+				while(instructions.hasNext()) {
 					AbstractInsnNode node = instructions.next();
-					if (node instanceof MethodInsnNode){
+					if(node instanceof MethodInsnNode) {
 						MethodInsnNode method = (MethodInsnNode)node;
-						if (orientCameraNode == null && method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc)){ //orientCamera
+						if(orientCameraNode == null && method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc)) { //orientCamera
 							LogHelper.debug("Core: Located target method insn node: " + method.name + method.desc);
 							orientCameraNode = node;
 							continue;
-						}else if (gluPerspectiveNode == null && method.name.equals("gluPerspective") && method.desc.equals("(FFFF)V")){
+						}
+						else if(gluPerspectiveNode == null && method.name.equals("gluPerspective") && method.desc.equals("(FFFF)V")) {
 							LogHelper.debug("Core: Located target method insn node: " + method.name + method.desc);
 							gluPerspectiveNode = node;
 							continue;
 						}
 					}
 
-					if (orientCameraNode != null && gluPerspectiveNode != null){
+					if(orientCameraNode != null && gluPerspectiveNode != null) {
 						//found all nodes we're looking for
 						break;
 					}
 				}
-				if (orientCameraNode != null){
+				if(orientCameraNode != null) {
 					VarInsnNode floatset = new VarInsnNode(Opcodes.FLOAD, 1);
-					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "shiftView", "(F)V");
+					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "shiftView", "(F)V", false);
 					mn.instructions.insert(orientCameraNode, callout);
 					mn.instructions.insert(orientCameraNode, floatset);
 					LogHelper.debug("Core: Success!  Inserted callout function op (shift)!");
 				}
-				if (gluPerspectiveNode != null){
+				if(gluPerspectiveNode != null) {
 					VarInsnNode floatset = new VarInsnNode(Opcodes.FLOAD, 1);
-					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "flipView", "(F)V");
+					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "flipView", "(F)V", false);
 					mn.instructions.insert(gluPerspectiveNode, callout);
 					mn.instructions.insert(gluPerspectiveNode, floatset);
 					LogHelper.debug("Core: Success!  Inserted callout function op (flip)!");
 				}
 
-			}else if (mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc)){  //updateCameraAndRender
+			}
+			else if(mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc)) {  //updateCameraAndRender
 				AbstractInsnNode target = null;
 				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
 				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-				AbstractInsnNode node = null;
+				AbstractInsnNode node;
 				boolean mouseFound = false;
-				while (instructions.hasNext()){
+				while(instructions.hasNext()) {
 					node = instructions.next();
 					//look for the line:
 					//this.mc.mcProfiler.startSection("mouse");
-					if (!mouseFound){
-						if (node instanceof LdcInsnNode){
-							if (((LdcInsnNode)node).cst.equals("mouse")){
+					if(!mouseFound) {
+						if(node instanceof LdcInsnNode) {
+							if(((LdcInsnNode)node).cst.equals("mouse")) {
 								mouseFound = true;
 							}
 						}
-					}else{
-						if (node instanceof MethodInsnNode){
+					}
+					else {
+						if(node instanceof MethodInsnNode) {
 							MethodInsnNode method = (MethodInsnNode)node;
-							if (method.owner.equals(method2_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method2_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method2_searchinstruction_desc)){
+							if(method.owner.equals(method2_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method2_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method2_searchinstruction_desc)) {
 								LogHelper.debug("Core: Located target method insn node: " + method.owner + "." + method.name + ", " + method.desc);
 								target = node;
 								break;
@@ -318,14 +323,13 @@ public class BytecodeTransformers implements IClassTransformer{
 						}
 					}
 				}
-
-				if (target != null){
-					int iRegister = (MysteriumPatchesFixLoaderMagicka.isOptiFinePresent() || checkIsOptifineFilePresent()) ? 3 : 2;
-
+				if(target != null) {
+					int iRegister = (CustomLoadingPlugin.foundOptifine) ? 3 : 2;
+					
 					VarInsnNode aLoad = new VarInsnNode(Opcodes.ALOAD, 0);
 					VarInsnNode fLoad = new VarInsnNode(Opcodes.FLOAD, 1);
 					VarInsnNode iLoad = new VarInsnNode(Opcodes.ILOAD, iRegister);
-					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "overrideMouseInput", method2_insertinstruction_desc.getVal(is_obfuscated));
+					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "overrideMouseInput", method2_insertinstruction_desc.getVal(is_obfuscated), false);
 					VarInsnNode iStore = new VarInsnNode(Opcodes.ISTORE, iRegister);
 
 					mn.instructions.insert(target, iStore);
@@ -344,54 +348,7 @@ public class BytecodeTransformers implements IClassTransformer{
 		return cw.toByteArray();
 	}
 
-	private boolean checkIsOptifineFilePresent() {
-		File file = new File(".");
-		fetchFiles(file, f -> checkForOpt(f.getAbsolutePath()));
-		return isOptifineFilePresent;
-	}
-
-	private boolean checkIsThaumcraftFilePresent() {
-		File file = new File(".");
-		fetchFiles(file, f -> checkForOpt(f.getAbsolutePath()));
-		return isThaumcraftFilePresent;
-	}
-
-	private boolean checkIsDragonApiFilePresent() {
-		File file = new File(".");
-		fetchFiles(file, f -> checkForOpt(f.getAbsolutePath()));
-		return isDragonApiFilePresent;
-	}
-
-	private void checkForOpt(String path) {
-		if ((path.contains("optifine") && path.endsWith(".jar")) || (path.contains("OptiFine") && path.endsWith(".jar")) || (path.contains("Optifine") && path.endsWith(".jar"))) {
-			System.out.println("Optifine detected! Attempting compatibility. If you do not have optifine, this is an error; report it.");
-			isOptifineFilePresent = true;
-		}
-		if ((path.contains("DragonAPI") && path.endsWith(".jar")) || (path.contains("dragonapi") && path.endsWith(".jar")) || (path.contains("Dragonapi") && path.endsWith(".jar"))) {
-			System.out.println("DragonAPI detected! Attempting compatibility. If you do not have DragonAPI, this is an error; report it.");
-			isDragonApiFilePresent = true;
-		}
-		if ((path.contains("Thaumcraft") && path.endsWith(".jar")) || (path.contains("thaumcraft") && path.endsWith(".jar")) || (path.contains("ThaumCraft") && path.endsWith(".jar"))) {
-			System.out.println("Thaumcraft detected! Attempting compatibility. If you do not have Thaumcraft, this is an error; report it.");
-			isThaumcraftFilePresent = true;
-		}
-	}
-
-	public boolean isOptifineFilePresent = false;
-	public boolean isDragonApiFilePresent = false;
-	public boolean isThaumcraftFilePresent = false;
-
-	public static void fetchFiles(File dir, Consumer<File> fileConsumer) {
-		if (dir.isDirectory()) {
-			for (File file1 : dir.listFiles()) {
-				fetchFiles(file1, fileConsumer);
-			}
-		} else {
-			fileConsumer.accept(dir);
-		}
-	}
-
-	private byte[] alterEntityPlayerSP(byte[] bytes, boolean is_obfuscated){
+	private byte[] alterEntityPlayerSP(byte[] bytes, boolean is_obfuscated) {
 		ClassReader cr = new ClassReader(bytes);
 		ClassNode cn = new ClassNode();
 		cr.accept(cn, 0);
@@ -414,22 +371,22 @@ public class BytecodeTransformers implements IClassTransformer{
 
 		String searchinstruction_desc = "()V";
 
-		for (MethodNode mn : cn.methods){
-			if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc)){ //onLivingUpdate
+		for(MethodNode mn: cn.methods) {
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc)) { //onLivingUpdate
 				AbstractInsnNode target = null;
 				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
 				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
 				//look for the line:
 				//this.movementInput.updatePlayerMoveState();
-				while (instructions.hasNext()){
+				while(instructions.hasNext()) {
 					AbstractInsnNode node = instructions.next();
-					if (node instanceof VarInsnNode && ((VarInsnNode)node).getOpcode() == Opcodes.ALOAD){ //this.
+					if(node instanceof VarInsnNode && node.getOpcode() == Opcodes.ALOAD) { //this.
 						node = instructions.next();
-						if (node instanceof FieldInsnNode && ((FieldInsnNode)node).getOpcode() == Opcodes.GETFIELD){ //movementInput.
+						if(node instanceof FieldInsnNode && node.getOpcode() == Opcodes.GETFIELD) { //movementInput.
 							node = instructions.next();
-							if (node instanceof MethodInsnNode){
+							if(node instanceof MethodInsnNode) {
 								MethodInsnNode method = (MethodInsnNode)node;
-								if (method.name.equals(method1_searchinstruction.getVal(is_obfuscated)) && method.desc.equals(searchinstruction_desc)){ //updatePlayerMoveState
+								if(method.name.equals(method1_searchinstruction.getVal(is_obfuscated)) && method.desc.equals(searchinstruction_desc)) { //updatePlayerMoveState
 									LogHelper.debug("Core: Located target method insn node: " + method.name + method.desc);
 									target = node;
 									break;
@@ -439,8 +396,8 @@ public class BytecodeTransformers implements IClassTransformer{
 					}
 				}
 
-				if (target != null){
-					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "overrideKeyboardInput", "()V");
+				if(target != null) {
+					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/guis/AMGuiHelper", "overrideKeyboardInput", "()V", false);
 					mn.instructions.insert(target, callout);
 					LogHelper.debug("Core: Success!  Inserted operations!");
 					break;
@@ -453,46 +410,46 @@ public class BytecodeTransformers implements IClassTransformer{
 		return cw.toByteArray();
 	}
 
-	private byte[] alterWorld(byte[] bytes, boolean is_obfuscated){
+	private byte[] alterWorld(byte[] bytes, boolean is_obfuscated) {
 		ClassReader cr = new ClassReader(bytes);
 		ClassNode cn = new ClassNode();
 		cr.accept(cn, 0);
-		
+
 		// Minecraft r1.7.10:
 		// net.minecraft.world.World.java = ahb.class
 
 		// World.playSoundAtEntity = ahb.a
 		// MCP mapping: ahb/a (Lsa;Ljava/lang/String;FF)V net/minecraft/world/World/func_72956_a (Lnet/minecraft/entity/Entity;Ljava/lang/String;FF)V
-		
-	      obf_deobf_pair method1_name = new obf_deobf_pair();
-	      method1_name.setVal("playSoundAtEntity", false);
-	      method1_name.setVal("a", true);
 
-	      obf_deobf_pair method1_desc = new obf_deobf_pair();
-	      method1_desc.setVal("(Lnet/minecraft/entity/Entity;Ljava/lang/String;FF)V", false);
-	      method1_desc.setVal("(Lsa;Ljava/lang/String;FF)V", true);
+		obf_deobf_pair method1_name = new obf_deobf_pair();
+		method1_name.setVal("playSoundAtEntity", false);
+		method1_name.setVal("a", true);
 
-	      obf_deobf_pair method1_replacement_desc = new obf_deobf_pair();
-	      method1_replacement_desc.setVal("(Lnet/minecraft/entity/Entity;F)F", false);
-	      method1_replacement_desc.setVal("(Lsa;F)F", true);
+		obf_deobf_pair method1_desc = new obf_deobf_pair();
+		method1_desc.setVal("(Lnet/minecraft/entity/Entity;Ljava/lang/String;FF)V", false);
+		method1_desc.setVal("(Lsa;Ljava/lang/String;FF)V", true);
 
-		for (MethodNode mn : cn.methods){
-			if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))){
+		obf_deobf_pair method1_replacement_desc = new obf_deobf_pair();
+		method1_replacement_desc.setVal("(Lnet/minecraft/entity/Entity;F)F", false);
+		method1_replacement_desc.setVal("(Lsa;F)F", true);
+
+		for(MethodNode mn: cn.methods) {
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))) {
 				AbstractInsnNode target = null;
 				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
 				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-				while (instructions.hasNext()){
+				while(instructions.hasNext()) {
 					AbstractInsnNode node = instructions.next();
-					if (node instanceof VarInsnNode &&
-							((VarInsnNode)node).getOpcode() == Opcodes.ALOAD &&
-							((VarInsnNode)node).var == 5){
+					if(node instanceof VarInsnNode &&
+							node.getOpcode() == Opcodes.ALOAD &&
+							((VarInsnNode)node).var == 5) {
 						AbstractInsnNode potentialMatch = node;
 						node = instructions.next();
-						if (node instanceof FieldInsnNode &&
-								((FieldInsnNode)node).getOpcode() == Opcodes.GETFIELD &&
+						if(node instanceof FieldInsnNode &&
+								node.getOpcode() == Opcodes.GETFIELD &&
 								((FieldInsnNode)node).name.equals("name") &&
 								((FieldInsnNode)node).desc.equals("Ljava/lang/String;") &&
-								((FieldInsnNode)node).owner.equals("net/minecraftforge/event/entity/PlaySoundAtEntityEvent")){
+								((FieldInsnNode)node).owner.equals("net/minecraftforge/event/entity/PlaySoundAtEntityEvent")) {
 							LogHelper.debug("Core: Located target method insn node: " + ((FieldInsnNode)node).name + ", " + ((FieldInsnNode)node).desc);
 							target = potentialMatch;
 							break;
@@ -500,10 +457,10 @@ public class BytecodeTransformers implements IClassTransformer{
 					}
 				}
 
-				if (target != null){
+				if(target != null) {
 					VarInsnNode aload1 = new VarInsnNode(Opcodes.ALOAD, 1);
 					VarInsnNode fload4 = new VarInsnNode(Opcodes.FLOAD, 4);
-					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/utility/EntityUtilities", "modifySoundPitch", method1_replacement_desc.getVal(is_obfuscated));
+					MethodInsnNode callout = new MethodInsnNode(Opcodes.INVOKESTATIC, "am2/utility/EntityUtilities", "modifySoundPitch", method1_replacement_desc.getVal(is_obfuscated), false);
 					VarInsnNode fstore4 = new VarInsnNode(Opcodes.FSTORE, 4);
 					mn.instructions.insertBefore(target, aload1);
 					mn.instructions.insertBefore(target, fload4);
@@ -578,7 +535,7 @@ public class BytecodeTransformers implements IClassTransformer{
 	}
 	*/
 
-	private byte[] alterNetHandlerPlayServer(byte[] bytes, boolean is_obfuscated){
+	private byte[] alterNetHandlerPlayServer(byte[] bytes, boolean is_obfuscated) {
 		ClassReader cr = new ClassReader(bytes);
 		ClassNode cn = new ClassNode();
 		cr.accept(cn, 0);
@@ -608,7 +565,7 @@ public class BytecodeTransformers implements IClassTransformer{
 		obf_deobf_pair method1_searchinstruction_class = new obf_deobf_pair();
 		method1_searchinstruction_class.setVal("net/minecraft/network/play/client/C03PacketPlayer", false);
 		method1_searchinstruction_class.setVal("jd", true);
-		
+
 		obf_deobf_pair method1_searchinstruction_function1 = new obf_deobf_pair();
 		method1_searchinstruction_function1.setVal("func_149471_f", false);
 		method1_searchinstruction_function1.setVal("f", true);
@@ -618,9 +575,9 @@ public class BytecodeTransformers implements IClassTransformer{
 		method1_searchinstruction_function2.setVal("d", true);
 
 		String method1_searchinstructions_desc = "()D";
-		
-		for (MethodNode mn : cn.methods){
-			if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))){ //processPlayer
+
+		for(MethodNode mn: cn.methods) {
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))) { //processPlayer
 				AbstractInsnNode target = null;
 				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
 				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
@@ -629,19 +586,19 @@ public class BytecodeTransformers implements IClassTransformer{
 				// d4 = p_147347_1_.func_149471_f() - p_147347_1_.func_149467_d();
 				// p_147347_1_ = C03PacketPlayer
 				//in MC r1.6.4, d4 = par1Packet10Flying.stance - par1Packet10Flying.yPosition;
-				while (instructions.hasNext()){
+				while(instructions.hasNext()) {
 					AbstractInsnNode node = instructions.next();
-					if (node instanceof VarInsnNode && ((VarInsnNode)node).var == 1 && ((VarInsnNode)node).getOpcode() == Opcodes.ALOAD){ //ALOAD 1
+					if(node instanceof VarInsnNode && ((VarInsnNode)node).var == 1 && node.getOpcode() == Opcodes.ALOAD) { //ALOAD 1
 						node = instructions.next();
-						if (node instanceof MethodInsnNode && matchMethodNode((MethodInsnNode)node, Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_searchinstruction_function1.getVal(is_obfuscated), method1_searchinstructions_desc)){
+						if(node instanceof MethodInsnNode && matchMethodNode((MethodInsnNode)node, Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_searchinstruction_function1.getVal(is_obfuscated), method1_searchinstructions_desc)) {
 							node = instructions.next();
-							if (node instanceof VarInsnNode && ((VarInsnNode)node).var == 1 && ((VarInsnNode)node).getOpcode() == Opcodes.ALOAD){ //ALOAD 1
+							if(node instanceof VarInsnNode && ((VarInsnNode)node).var == 1 && node.getOpcode() == Opcodes.ALOAD) { //ALOAD 1
 								node = instructions.next();
-								if (node instanceof MethodInsnNode && matchMethodNode((MethodInsnNode)node, Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_searchinstruction_function2.getVal(is_obfuscated), method1_searchinstructions_desc)){
+								if(node instanceof MethodInsnNode && matchMethodNode((MethodInsnNode)node, Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_searchinstruction_function2.getVal(is_obfuscated), method1_searchinstructions_desc)) {
 									node = instructions.next();
-									if (node instanceof InsnNode && ((InsnNode)node).getOpcode() == Opcodes.DSUB){ //DSUB
+									if(node instanceof InsnNode && node.getOpcode() == Opcodes.DSUB) { //DSUB
 										node = instructions.next();
-										if (node instanceof VarInsnNode && ((VarInsnNode)node).var == 13 && ((VarInsnNode)node).getOpcode() == Opcodes.DSTORE){ //DSTORE 13
+										if(node instanceof VarInsnNode && ((VarInsnNode)node).var == 13 && node.getOpcode() == Opcodes.DSTORE) { //DSTORE 13
 											target = node;
 											break;
 										}
@@ -652,7 +609,7 @@ public class BytecodeTransformers implements IClassTransformer{
 					}
 				}
 
-				if (target != null){
+				if(target != null) {
 					LdcInsnNode ldc = new LdcInsnNode(1.5);
 					VarInsnNode dstore13 = new VarInsnNode(Opcodes.DSTORE, 13);
 
@@ -668,449 +625,454 @@ public class BytecodeTransformers implements IClassTransformer{
 		cn.accept(cw);
 		return cw.toByteArray();
 	}
-	
-	private byte[] alterPotionEffect(byte[] bytes, boolean is_obfuscated){
-	      ClassReader cr = new ClassReader(bytes);
-	      ClassNode cn = new ClassNode();
-	      cr.accept(cn, 0);
-	      
-	      // Minecraft r1.7.10:
-	      // PotionEffect.java --> rw.class
-	      
-	      // PotionEffect.writeCustomPotionEffectToNBT = rw.a
-	      // MCP mapping: rw/a (Ldh;)Ldh; net/minecraft/potion/PotionEffect/func_82719_a (Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/nbt/NBTTagCompound
-	      
-	      // PotionEffect.readCustomPotionEffectFromNBT = rw.b
-	      // MCP mapping: rw/b (Ldh;)Lrw; net/minecraft/potion/PotionEffect/func_82722_b (Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/potion/PotionEffect;
-	      
-	      // PotionEffect.getPotionID = rw.a
-	      // MCP mapping: rw/a ()I net/minecraft/potion/PotionEffect/func_76456_a ()I
-	      // note: called as this.getPotionID(), original has a typecast to byte before calling it
-	      
-	      // NBTTagCompound.java --> dh.class
-	      
-	      // NBTTagCompound.setByte(string, value) = dh.a
-	      // MCP mapping: dh/a (Ljava/lang/String;B)V net/minecraft/nbt/NBTTagCompound/func_74774_a (Ljava/lang/String;B)V
-	      
-	      // NBTTagCompound.setInteger(string, value) = dh.a
-	      // MCP mapping: dh/a (Ljava/lang/String;I)V net/minecraft/nbt/NBTTagCompound/func_74768_a (Ljava/lang/String;I)V
-	      
-	      // NBTTagCompound.getByte(string) = dh.d
-	      // MCP mapping: dh/d (Ljava/lang/String;)B net/minecraft/nbt/NBTTagCompound/func_74771_c (Ljava/lang/String;)B
-	      
-	      // NBTTagCompound.getInteger(string) = dh.f
-	      // MCP mapping: dh/f (Ljava/lang/String;)I net/minecraft/nbt/NBTTagCompound/func_74762_e (Ljava/lang/String;)I
-	      
-	      obf_deobf_pair method1_name = new obf_deobf_pair();
-	      method1_name.setVal("writeCustomPotionEffectToNBT", false);
-	      method1_name.setVal("a", true);
 
-	      obf_deobf_pair method1_desc = new obf_deobf_pair();
-	      method1_desc.setVal("(Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/nbt/NBTTagCompound;", false);
-	      method1_desc.setVal("(Ldh;)Ldh;", true);
+	private byte[] alterPotionEffect(byte[] bytes, boolean is_obfuscated) {
+		ClassReader cr = new ClassReader(bytes);
+		ClassNode cn = new ClassNode();
+		cr.accept(cn, 0);
 
-	      // don't forget, you need to remove the i2b instruction which immediately precedes this one
-	      obf_deobf_pair method1_searchinstruction_class = new obf_deobf_pair();
-	      method1_searchinstruction_class.setVal("net/minecraft/nbt/NBTTagCompound", false);
-	      method1_searchinstruction_class.setVal("dh", true);
+		// Minecraft r1.7.10:
+		// PotionEffect.java --> rw.class
 
-	      obf_deobf_pair method1_searchinstruction_function = new obf_deobf_pair();
-	      method1_searchinstruction_function.setVal("setByte", false);
-	      method1_searchinstruction_function.setVal("a", true);
+		// PotionEffect.writeCustomPotionEffectToNBT = rw.a
+		// MCP mapping: rw/a (Ldh;)Ldh; net/minecraft/potion/PotionEffect/func_82719_a (Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/nbt/NBTTagCompound
 
-	      obf_deobf_pair method1_searchinstruction_desc = new obf_deobf_pair();
-	      method1_searchinstruction_desc.setVal("(Ljava/lang/String;B)V", false);
-	      method1_searchinstruction_desc.setVal("(Ljava/lang/String;B)V", true);
+		// PotionEffect.readCustomPotionEffectFromNBT = rw.b
+		// MCP mapping: rw/b (Ldh;)Lrw; net/minecraft/potion/PotionEffect/func_82722_b (Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/potion/PotionEffect;
+
+		// PotionEffect.getPotionID = rw.a
+		// MCP mapping: rw/a ()I net/minecraft/potion/PotionEffect/func_76456_a ()I
+		// note: called as this.getPotionID(), original has a typecast to byte before calling it
+
+		// NBTTagCompound.java --> dh.class
+
+		// NBTTagCompound.setByte(string, value) = dh.a
+		// MCP mapping: dh/a (Ljava/lang/String;B)V net/minecraft/nbt/NBTTagCompound/func_74774_a (Ljava/lang/String;B)V
+
+		// NBTTagCompound.setInteger(string, value) = dh.a
+		// MCP mapping: dh/a (Ljava/lang/String;I)V net/minecraft/nbt/NBTTagCompound/func_74768_a (Ljava/lang/String;I)V
+
+		// NBTTagCompound.getByte(string) = dh.d
+		// MCP mapping: dh/d (Ljava/lang/String;)B net/minecraft/nbt/NBTTagCompound/func_74771_c (Ljava/lang/String;)B
+
+		// NBTTagCompound.getInteger(string) = dh.f
+		// MCP mapping: dh/f (Ljava/lang/String;)I net/minecraft/nbt/NBTTagCompound/func_74762_e (Ljava/lang/String;)I
+
+		obf_deobf_pair method1_name = new obf_deobf_pair();
+		method1_name.setVal("writeCustomPotionEffectToNBT", false);
+		method1_name.setVal("a", true);
+
+		obf_deobf_pair method1_desc = new obf_deobf_pair();
+		method1_desc.setVal("(Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/nbt/NBTTagCompound;", false);
+		method1_desc.setVal("(Ldh;)Ldh;", true);
+
+		// don't forget, you need to remove the i2b instruction which immediately precedes this one
+		obf_deobf_pair method1_searchinstruction_class = new obf_deobf_pair();
+		method1_searchinstruction_class.setVal("net/minecraft/nbt/NBTTagCompound", false);
+		method1_searchinstruction_class.setVal("dh", true);
+
+		obf_deobf_pair method1_searchinstruction_function = new obf_deobf_pair();
+		method1_searchinstruction_function.setVal("setByte", false);
+		method1_searchinstruction_function.setVal("a", true);
+
+		obf_deobf_pair method1_searchinstruction_desc = new obf_deobf_pair();
+		method1_searchinstruction_desc.setVal("(Ljava/lang/String;B)V", false);
+		method1_searchinstruction_desc.setVal("(Ljava/lang/String;B)V", true);
 
 
-	      // replace instruction class is the same as the search instruction class for method1
+		// replace instruction class is the same as the search instruction class for method1
 
-	      obf_deobf_pair method1_replaceinstruction_function = new obf_deobf_pair();
-	      method1_replaceinstruction_function.setVal("setInteger", false);
-	      method1_replaceinstruction_function.setVal("a", true);
+		obf_deobf_pair method1_replaceinstruction_function = new obf_deobf_pair();
+		method1_replaceinstruction_function.setVal("setInteger", false);
+		method1_replaceinstruction_function.setVal("a", true);
 
-	      obf_deobf_pair method1_replaceinstruction_desc = new obf_deobf_pair();
-	      method1_replaceinstruction_desc.setVal("(Ljava/lang/String;I)V", false);
-	      method1_replaceinstruction_desc.setVal("(Ljava/lang/String;I)V", true);
+		obf_deobf_pair method1_replaceinstruction_desc = new obf_deobf_pair();
+		method1_replaceinstruction_desc.setVal("(Ljava/lang/String;I)V", false);
+		method1_replaceinstruction_desc.setVal("(Ljava/lang/String;I)V", true);
 
-	      obf_deobf_pair method2_name = new obf_deobf_pair();
-	      method2_name.setVal("readCustomPotionEffectFromNBT", false);
-	      method2_name.setVal("b", true);
+		obf_deobf_pair method2_name = new obf_deobf_pair();
+		method2_name.setVal("readCustomPotionEffectFromNBT", false);
+		method2_name.setVal("b", true);
 
-	      obf_deobf_pair method2_desc = new obf_deobf_pair();
-	      method2_desc.setVal("(Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/potion/PotionEffect;", false);
-	      method2_desc.setVal("(Ldh;)Lrw;", true);
+		obf_deobf_pair method2_desc = new obf_deobf_pair();
+		method2_desc.setVal("(Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/potion/PotionEffect;", false);
+		method2_desc.setVal("(Ldh;)Lrw;", true);
 
-	      obf_deobf_pair method2_searchinstruction_class = new obf_deobf_pair();
-	      method2_searchinstruction_class.setVal("net/minecraft/nbt/NBTTagCompound", false);
-	      method2_searchinstruction_class.setVal("dh", true);
+		obf_deobf_pair method2_searchinstruction_class = new obf_deobf_pair();
+		method2_searchinstruction_class.setVal("net/minecraft/nbt/NBTTagCompound", false);
+		method2_searchinstruction_class.setVal("dh", true);
 
-	      obf_deobf_pair method2_searchinstruction_function = new obf_deobf_pair();
-	      method2_searchinstruction_function.setVal("getByte", false);
-	      method2_searchinstruction_function.setVal("d", true);
+		obf_deobf_pair method2_searchinstruction_function = new obf_deobf_pair();
+		method2_searchinstruction_function.setVal("getByte", false);
+		method2_searchinstruction_function.setVal("d", true);
 
-	      obf_deobf_pair method2_searchinstruction_desc = new obf_deobf_pair();
-	      method2_searchinstruction_desc.setVal("(Ljava/lang/String;)B", false);
-	      method2_searchinstruction_desc.setVal("(Ljava/lang/String;)B", true);
+		obf_deobf_pair method2_searchinstruction_desc = new obf_deobf_pair();
+		method2_searchinstruction_desc.setVal("(Ljava/lang/String;)B", false);
+		method2_searchinstruction_desc.setVal("(Ljava/lang/String;)B", true);
 
-	      // replace instruction class is the same as the search instruction class for method2 as well
+		// replace instruction class is the same as the search instruction class for method2 as well
 
-	      obf_deobf_pair method2_replaceinstruction_function = new obf_deobf_pair();
-	      method2_replaceinstruction_function.setVal("getInteger", false);
-	      method2_replaceinstruction_function.setVal("f", true);
+		obf_deobf_pair method2_replaceinstruction_function = new obf_deobf_pair();
+		method2_replaceinstruction_function.setVal("getInteger", false);
+		method2_replaceinstruction_function.setVal("f", true);
 
-	      obf_deobf_pair method2_replaceinstruction_desc = new obf_deobf_pair();
-	      method2_replaceinstruction_desc.setVal("(Ljava/lang/String;)I", false);
-	      method2_replaceinstruction_desc.setVal("(Ljava/lang/String;)I", true);
-	      
-	      // LogHelper.debug("Core: looking for method " + method1_name.getVal(is_obfuscated) + " with signature " + method1_desc.getVal(is_obfuscated));
-	      // LogHelper.debug("Core: looking for method " + method2_name.getVal(is_obfuscated) + " with signature " + method2_desc.getVal(is_obfuscated));
-	      
-	      
-	      for (MethodNode mn : cn.methods){
-		      // LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
-		      if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))){
-			      // writeCustomPotionEffectToNBT
-			      AbstractInsnNode target = null;
-			      AbstractInsnNode toRemove = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-				      AbstractInsnNode node = instructions.next();
-				      if (node instanceof MethodInsnNode){
-					      MethodInsnNode method = (MethodInsnNode)node;
-					      if (method.owner.equals(method1_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc.getVal(is_obfuscated))){ //setByte(string, byte)
-						      target = method;
-						      // don't forget, you need to remove the i2b instruction which immediately precedes this one
-						      toRemove = method.getPrevious();
-						      break;
-					      }
-				      }
-			      }
+		obf_deobf_pair method2_replaceinstruction_desc = new obf_deobf_pair();
+		method2_replaceinstruction_desc.setVal("(Ljava/lang/String;)I", false);
+		method2_replaceinstruction_desc.setVal("(Ljava/lang/String;)I", true);
 
-			      if (target != null){
-				MethodInsnNode newset = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_replaceinstruction_function.getVal(is_obfuscated), method1_replaceinstruction_desc.getVal(is_obfuscated));
-				
-				InsnNode new_nop = new InsnNode(Opcodes.NOP);
-				
-				// removing instructions makes the game crash, we'll just replace it with NOP
-				mn.instructions.set(toRemove, new_nop);
-				mn.instructions.set(target, newset);
-				
-				LogHelper.debug("Core: Success!  Replaced opcodes!");
-			      }
-		      } else if (mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc.getVal(is_obfuscated))){
-			      // readCustomPotionEffectFromNBT
-			      AbstractInsnNode target = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-				      AbstractInsnNode node = instructions.next();
-				      if (node instanceof MethodInsnNode){
-					      MethodInsnNode method = (MethodInsnNode)node;
-					      if (method.owner.equals(method2_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method2_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method2_searchinstruction_desc.getVal(is_obfuscated))){ //getByte(string, byte)
-						      target = method;
-						      break;
-					      }
-				      }
-			      }
+		// LogHelper.debug("Core: looking for method " + method1_name.getVal(is_obfuscated) + " with signature " + method1_desc.getVal(is_obfuscated));
+		// LogHelper.debug("Core: looking for method " + method2_name.getVal(is_obfuscated) + " with signature " + method2_desc.getVal(is_obfuscated));
 
-			      if (target != null){
-				MethodInsnNode newset = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method2_searchinstruction_class.getVal(is_obfuscated), method2_replaceinstruction_function.getVal(is_obfuscated), method2_replaceinstruction_desc.getVal(is_obfuscated));
-				
-				mn.instructions.set(target, newset);
-				
-				LogHelper.debug("Core: Success!  Replaced opcodes!");
-			      }
-		      }
-	      }
 
-	      ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-	      cn.accept(cw);
-	      return cw.toByteArray();
+		for(MethodNode mn: cn.methods) {
+			// LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))) {
+				// writeCustomPotionEffectToNBT
+				AbstractInsnNode target = null;
+				AbstractInsnNode toRemove = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
+
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof MethodInsnNode) {
+						MethodInsnNode method = (MethodInsnNode)node;
+						if(method.owner.equals(method1_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc.getVal(is_obfuscated))) { //setByte(string, byte)
+							target = method;
+							// don't forget, you need to remove the i2b instruction which immediately precedes this one
+							toRemove = method.getPrevious();
+							break;
+						}
+					}
+				}
+
+				if(target != null) {
+					MethodInsnNode newset = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_replaceinstruction_function.getVal(is_obfuscated), method1_replaceinstruction_desc.getVal(is_obfuscated), false);
+
+					InsnNode new_nop = new InsnNode(Opcodes.NOP);
+
+					// removing instructions makes the game crash, we'll just replace it with NOP
+					mn.instructions.set(toRemove, new_nop);
+					mn.instructions.set(target, newset);
+
+					LogHelper.debug("Core: Success!  Replaced opcodes!");
+				}
+			}
+			else if(mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc.getVal(is_obfuscated))) {
+				// readCustomPotionEffectFromNBT
+				AbstractInsnNode target = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
+
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof MethodInsnNode) {
+						MethodInsnNode method = (MethodInsnNode)node;
+						if(method.owner.equals(method2_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method2_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method2_searchinstruction_desc.getVal(is_obfuscated))) { //getByte(string, byte)
+							target = method;
+							break;
+						}
+					}
+				}
+
+				if(target != null) {
+					MethodInsnNode newset = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method2_searchinstruction_class.getVal(is_obfuscated), method2_replaceinstruction_function.getVal(is_obfuscated), method2_replaceinstruction_desc.getVal(is_obfuscated), false);
+
+					mn.instructions.set(target, newset);
+
+					LogHelper.debug("Core: Success!  Replaced opcodes!");
+				}
+			}
+		}
+
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		cn.accept(cw);
+		return cw.toByteArray();
 	}
-	
-	private byte[] alterS1DPacketEntityEffect(byte[] bytes, boolean is_obfuscated, String classname){
-	      ClassReader cr = new ClassReader(bytes);
-	      ClassNode cn = new ClassNode();
-	      cr.accept(cn, 0);
 
+	private byte[] alterS1DPacketEntityEffect(byte[] bytes, boolean is_obfuscated, String classname) {
+		ClassReader cr = new ClassReader(bytes);
+		ClassNode cn = new ClassNode();
+		cr.accept(cn, 0);
+
+		// TODO see what it actually does and maybe remove 
 		//debug
-		if (!is_obfuscated){
-			try{
+		if(!is_obfuscated) {
+			try {
 				ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 				cn.accept(cw);
 				File outDir = new File("asm/am2");
 				outDir.mkdirs();
-				DataOutputStream dout = new DataOutputStream(new FileOutputStream(new File(outDir, "SD1PacketEntityEffect_pre.class")));
+				DataOutputStream dout = new DataOutputStream(Files.newOutputStream(new File(outDir, "SD1PacketEntityEffect_pre.class").toPath()));
 				dout.write(cw.toByteArray());
 				dout.flush();
 				dout.close();
-			}catch (Exception e){
+			}
+			catch(Exception e) {
 				e.printStackTrace();
 			}
 		}
-	      
-	      // Minecraft r1.7.10:
-	      // S1DPacketEntityEffect.java --> in.class
-	      
-	      // S1DPacketEntityEffect.field_149432_b = in.b
-	      
-	      // S1DPacketEntityEffect.<init> = in.<init>
-	      // Method name and description: S1DPacketEntityEffect/<init> (ILnet/minecraft/potion/PotionEffect;)V;
-	      // Obfuscated: in/<init>, (ILrw;)V;
-	      // changes in init: look for invokevirtual rw/a, signature ()I
-	      // check to see if the 3 following instructions are SIPUSH, IAND, I2B
-	      // if so, replace all with NOP
-	      // the fourth instruction, PUTFIELD, might possibly need its signature changed
-	      // but I'm going to see exactly what the ASM documentation means when it says
-	      // "hopefully ASM hides all the details related to the constant pool"
-	      
-	      // well, the documentation is talking bollocks
-	      // we need to change the constant pool manually... which is not an easy thing to accomplish
-	      
-	      
-	      // S1DPacketEntityEffect.readPacketData(PacketBuffer) = in.a(et)
-	      // MCP mapping: in/a (Let;)V net/minecraft/network/play/server/S1DPacketEntityEffect/func_148837_a (Lnet/minecraft/network/PacketBuffer;)V
-	      
-	      // --conveniently, PacketBuffer extends an external library, so the important bits can't be obfuscated
-	      // PacketBuffer.readByte() = et.readByte()
-	      // MCP mapping: et/readByte ()B net/minecraft/network/PacketBuffer/readByte ()B
-	      
-	      // PacketBuffer.readInt() = et.readInt()
-	      // MCP mapping: et/readInt ()I net/minecraft/network/PacketBuffer/readInt ()I
-	      
-	      
-	      // S1DPacketEntityEffect.writePacketData(PacketBuffer) = in.b(et)
-	      // MCP mapping: in/b (Let;)V net/minecraft/network/play/server/S1DPacketEntityEffect/func_148840_b (Lnet/minecraft/network/PacketBuffer;)V
-	      
-	      // PacketBuffer/writeByte() = et.writeByte()
-	      // MCP mapping: MD: et/writeByte (I)Lio/netty/buffer/ByteBuf; net/minecraft/network/PacketBuffer/writeByte (I)Lio/netty/buffer/ByteBuf;
-	      
-	      // PacketBuffer.writeInt() = et.writeInt()
-	      // MCP mapping: MD: et/writeInt (I)Lio/netty/buffer/ByteBuf; net/minecraft/network/PacketBuffer/writeInt (I)Lio/netty/buffer/ByteBuf;
-	      
-	      
-	      // S1DPacketEntityEffect.func_149427_e() = in.e()
-	      // MCP mapping: in/e ()B net/minecraft/network/play/server/S1DPacketEntityEffect/func_149427_e ()B
-	      // need to change signature to ()I, don't change the method at all
-	      
-	      obf_deobf_pair potionid_bytevar_name = new obf_deobf_pair();
-	      potionid_bytevar_name.setVal("field_149432_b", false);
-	      potionid_bytevar_name.setVal("b", true);
-	      String potionid_bytevar_origdesc = "B";
-	      
-	      // we'll have to make a new field for this
-	      // existing one had description B (change this to I), access 2, signature null, value null
-	      
-	      
-	      String initmethod_name = "<init>";
-	      obf_deobf_pair initmethod_desc = new obf_deobf_pair();
-	      initmethod_desc.setVal("(ILnet/minecraft/potion/PotionEffect;)V", false);
-	      initmethod_desc.setVal("(ILrw;)V", true);
-	      
-	      obf_deobf_pair initmethod_searchinstruction_owner = new obf_deobf_pair();
-	      initmethod_searchinstruction_owner.setVal("net/minecraft/potion/PotionEffect", false);
-	      initmethod_searchinstruction_owner.setVal("rw", true);
-	      
-	      obf_deobf_pair initmethod_searchinstruction_function = new obf_deobf_pair();
-	      initmethod_searchinstruction_function.setVal("getPotionID", false);
-	      initmethod_searchinstruction_function.setVal("a", true);
-	      
-	      String initmethod_searchinstruction_desc = "()I";
-	      
-	      
-	      obf_deobf_pair method1_name = new obf_deobf_pair();
-	      method1_name.setVal("readPacketData", false);
-	      method1_name.setVal("a", true);
-	      
-	      obf_deobf_pair method1_desc = new obf_deobf_pair();
-	      method1_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
-	      method1_desc.setVal("(Let;)V", true);
-	      
-	      obf_deobf_pair method1_searchinstruction_owner = new obf_deobf_pair();
-	      method1_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
-	      method1_searchinstruction_owner.setVal("et", true);
-	      
-	      String method1_searchinstruction_function = "readByte";
-	      String method1_searchinstruction_desc = "()B";
 
-		  // method used to check if receiving a vanilla or AM2 packet
-		  String method1_checkinstruction_function = "readableBytes";
-		  String method1_checkinstruction_desc = "()I";
-	      
-	      // replacement class is the same
-	      String method1_replaceinstruction_function = "readInt";
-	      String method1_replaceinstruction_desc = "()I";
-	      
-	      
-	      obf_deobf_pair method2_name = new obf_deobf_pair();
-	      method2_name.setVal("writePacketData", false);
-	      method2_name.setVal("b", true);
-	      
-	      obf_deobf_pair method2_desc = new obf_deobf_pair();
-	      method2_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
-	      method2_desc.setVal("(Let;)V", true);
-	      
-	      obf_deobf_pair method2_searchinstruction_owner = new obf_deobf_pair();
-	      method2_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
-	      method2_searchinstruction_owner.setVal("et", true);
-	      
-	      String method2_searchinstruction_function = "writeByte";
-	      String method2_searchinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
+		// Minecraft r1.7.10:
+		// S1DPacketEntityEffect.java --> in.class
+
+		// S1DPacketEntityEffect.field_149432_b = in.b
+
+		// S1DPacketEntityEffect.<init> = in.<init>
+		// Method name and description: S1DPacketEntityEffect/<init> (ILnet/minecraft/potion/PotionEffect;)V;
+		// Obfuscated: in/<init>, (ILrw;)V;
+		// changes in init: look for invokevirtual rw/a, signature ()I
+		// check to see if the 3 following instructions are SIPUSH, IAND, I2B
+		// if so, replace all with NOP
+		// the fourth instruction, PUTFIELD, might possibly need its signature changed
+		// but I'm going to see exactly what the ASM documentation means when it says
+		// "hopefully ASM hides all the details related to the constant pool"
+
+		// well, the documentation is talking bollocks
+		// we need to change the constant pool manually... which is not an easy thing to accomplish
+
+
+		// S1DPacketEntityEffect.readPacketData(PacketBuffer) = in.a(et)
+		// MCP mapping: in/a (Let;)V net/minecraft/network/play/server/S1DPacketEntityEffect/func_148837_a (Lnet/minecraft/network/PacketBuffer;)V
+
+		// --conveniently, PacketBuffer extends an external library, so the important bits can't be obfuscated
+		// PacketBuffer.readByte() = et.readByte()
+		// MCP mapping: et/readByte ()B net/minecraft/network/PacketBuffer/readByte ()B
+
+		// PacketBuffer.readInt() = et.readInt()
+		// MCP mapping: et/readInt ()I net/minecraft/network/PacketBuffer/readInt ()I
+
+
+		// S1DPacketEntityEffect.writePacketData(PacketBuffer) = in.b(et)
+		// MCP mapping: in/b (Let;)V net/minecraft/network/play/server/S1DPacketEntityEffect/func_148840_b (Lnet/minecraft/network/PacketBuffer;)V
+
+		// PacketBuffer/writeByte() = et.writeByte()
+		// MCP mapping: MD: et/writeByte (I)Lio/netty/buffer/ByteBuf; net/minecraft/network/PacketBuffer/writeByte (I)Lio/netty/buffer/ByteBuf;
+
+		// PacketBuffer.writeInt() = et.writeInt()
+		// MCP mapping: MD: et/writeInt (I)Lio/netty/buffer/ByteBuf; net/minecraft/network/PacketBuffer/writeInt (I)Lio/netty/buffer/ByteBuf;
+
+
+		// S1DPacketEntityEffect.func_149427_e() = in.e()
+		// MCP mapping: in/e ()B net/minecraft/network/play/server/S1DPacketEntityEffect/func_149427_e ()B
+		// need to change signature to ()I, don't change the method at all
+
+		obf_deobf_pair potionid_bytevar_name = new obf_deobf_pair();
+		potionid_bytevar_name.setVal("field_149432_b", false);
+		potionid_bytevar_name.setVal("b", true);
+		String potionid_bytevar_origdesc = "B";
+
+		// we'll have to make a new field for this
+		// existing one had description B (change this to I), access 2, signature null, value null
+
+
+		String initmethod_name = "<init>";
+		obf_deobf_pair initmethod_desc = new obf_deobf_pair();
+		initmethod_desc.setVal("(ILnet/minecraft/potion/PotionEffect;)V", false);
+		initmethod_desc.setVal("(ILrw;)V", true);
+
+		obf_deobf_pair initmethod_searchinstruction_owner = new obf_deobf_pair();
+		initmethod_searchinstruction_owner.setVal("net/minecraft/potion/PotionEffect", false);
+		initmethod_searchinstruction_owner.setVal("rw", true);
+
+		obf_deobf_pair initmethod_searchinstruction_function = new obf_deobf_pair();
+		initmethod_searchinstruction_function.setVal("getPotionID", false);
+		initmethod_searchinstruction_function.setVal("a", true);
+
+		String initmethod_searchinstruction_desc = "()I";
+
+
+		obf_deobf_pair method1_name = new obf_deobf_pair();
+		method1_name.setVal("readPacketData", false);
+		method1_name.setVal("a", true);
+
+		obf_deobf_pair method1_desc = new obf_deobf_pair();
+		method1_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
+		method1_desc.setVal("(Let;)V", true);
+
+		obf_deobf_pair method1_searchinstruction_owner = new obf_deobf_pair();
+		method1_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
+		method1_searchinstruction_owner.setVal("et", true);
+
+		String method1_searchinstruction_function = "readByte";
+		String method1_searchinstruction_desc = "()B";
+
+		// method used to check if receiving a vanilla or AM2 packet
+		String method1_checkinstruction_function = "readableBytes";
+		String method1_checkinstruction_desc = "()I";
+
+		// replacement class is the same
+		String method1_replaceinstruction_function = "readInt";
+		String method1_replaceinstruction_desc = "()I";
+
+
+		obf_deobf_pair method2_name = new obf_deobf_pair();
+		method2_name.setVal("writePacketData", false);
+		method2_name.setVal("b", true);
+
+		obf_deobf_pair method2_desc = new obf_deobf_pair();
+		method2_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
+		method2_desc.setVal("(Let;)V", true);
+
+		obf_deobf_pair method2_searchinstruction_owner = new obf_deobf_pair();
+		method2_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
+		method2_searchinstruction_owner.setVal("et", true);
+
+		String method2_searchinstruction_function = "writeByte";
+		String method2_searchinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
 
 //		  String method2_checkinstruction_function = "writableBytes";
 //		  String method2_checkinstruction_desc = "()I";
-	      
-	      // replacement class is the same
-	      // so is the instruction, but we'll leave it as being explicitly defined just in case
-	      String method2_replaceinstruction_function = "writeInt";
-	      String method2_replaceinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
-	      
-	      // need to replace only this method descriptor
-	      obf_deobf_pair method3_name = new obf_deobf_pair();
-	      method3_name.setVal("func_149427_e", false);
-	      method3_name.setVal("e", true);
-	      
-	      // String method3_desc = "()B";
-	      String method3_newdesc = "()I";
-	      
-	      
-	      String potionID_intvar_name = "potionID_intvalue";
-	      String potionID_intvar_desc = "I";
-	      int potionID_intvar_access = 2;
-	      
-	      FieldNode potionID_intvar = new FieldNode(potionID_intvar_access, potionID_intvar_name, potionID_intvar_desc, null, null);
-	      cn.fields.add(potionID_intvar);
-	      
-	      for (MethodNode mn : cn.methods){
-		      // LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
-		      if (mn.name.equals(initmethod_name) && mn.desc.equals(initmethod_desc.getVal(is_obfuscated))){
-			      // init method
-			      AbstractInsnNode toRemove1 = null;
-			      AbstractInsnNode toRemove2 = null;
-			      AbstractInsnNode toRemove3 = null;
-			      AbstractInsnNode toReplace = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-				      AbstractInsnNode node = instructions.next();
-				      if (node instanceof MethodInsnNode){
-					      MethodInsnNode method = (MethodInsnNode)node;
-					      if (method.owner.equals(initmethod_searchinstruction_owner.getVal(is_obfuscated)) && method.name.equals(initmethod_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(initmethod_searchinstruction_desc)){ //getPotionID
-						      node = instructions.next();
-						      if (node instanceof IntInsnNode && ((IntInsnNode)node).getOpcode() == Opcodes.SIPUSH){
-							      toRemove1 = node;
-							      node = instructions.next();
-							      if (node instanceof InsnNode && ((InsnNode)node).getOpcode() == Opcodes.IAND){
-								      toRemove2 = node;
-								      node = instructions.next();
-								      if (node instanceof InsnNode && ((InsnNode)node).getOpcode() == Opcodes.I2B){
-									      toRemove3 = node;
-									      node = instructions.next();
-									      if (node instanceof FieldInsnNode && ((FieldInsnNode)node).getOpcode() == Opcodes.PUTFIELD && ((FieldInsnNode)node).name.equals(potionid_bytevar_name.getVal(is_obfuscated)) && ((FieldInsnNode)node).desc.equals(potionid_bytevar_origdesc)){
-										      toReplace = node;
-										      break;
-									      }
-								      }
-							      }
-						      }
-					      }
-				      }
-			      }
-			      
-			      if (toRemove1 != null && toRemove2 != null && toRemove3 != null && toReplace != null){
-				      InsnNode new_nop = new InsnNode(Opcodes.NOP);
-				      FieldInsnNode new_potion_id_variable = new FieldInsnNode(Opcodes.PUTFIELD, classname, potionID_intvar_name, potionID_intvar_desc);
-				      
-				      mn.instructions.set(toRemove1, new_nop);
-				      mn.instructions.set(toRemove2, new_nop);
-				      mn.instructions.set(toRemove3, new_nop);
-				      mn.instructions.set(toReplace, new_potion_id_variable);
-				      LogHelper.debug("Core: Success! Replaced opcodes!" + mn.name + mn.desc);
-			      }
-		      } else if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))){
-			      // readPacketData
-			      AbstractInsnNode target = null;
-			      AbstractInsnNode target2 = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-				      AbstractInsnNode node = instructions.next();
-				      if (node instanceof MethodInsnNode){
-					      MethodInsnNode method = (MethodInsnNode)node;
-					      if (method.owner.equals(method1_searchinstruction_owner.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function) && method.desc.equals(method1_searchinstruction_desc)){
-						      target = node;
-						      node = instructions.next();
-						      if (node instanceof FieldInsnNode && ((FieldInsnNode)node).getOpcode() == Opcodes.PUTFIELD && ((FieldInsnNode)node).name.equals(potionid_bytevar_name.getVal(is_obfuscated)) && ((FieldInsnNode)node).desc.equals(potionid_bytevar_origdesc)){
-							    target2 = node;
-							    break;
-						      }
-					      }
-				      }
-			      }
-			      
-			      if (target != null && target2 != null){
-			      	  InsnList new_if = new InsnList();
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
-					  new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_checkinstruction_function, method1_checkinstruction_desc, false));
-					  new_if.add(new IntInsnNode(Opcodes.BIPUSH, 7));
-					  LabelNode elseLabel = new LabelNode();
-					  new_if.add(new JumpInsnNode(Opcodes.IF_ICMPNE, elseLabel));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
-					  new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc, false));
-					  new_if.add(new FieldInsnNode(Opcodes.PUTFIELD, classname, potionID_intvar_name, potionID_intvar_desc));
-					  LabelNode endIfLabel = new LabelNode();
-					  new_if.add(new JumpInsnNode(Opcodes.GOTO, endIfLabel));
-					  new_if.add(elseLabel);
-					  new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
-					  new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_searchinstruction_function, method1_searchinstruction_desc, false));
-					  new_if.add(new FieldInsnNode(Opcodes.PUTFIELD, classname, potionID_intvar_name, potionID_intvar_desc));
-					  new_if.add(endIfLabel);
-					  new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
 
-					  mn.instructions.insertBefore(target.getPrevious().getPrevious(), new_if);
-					  mn.instructions.remove(target.getPrevious().getPrevious()); // ALOAD 0
-					  mn.instructions.remove(target.getPrevious()); // ALOAD 1
-					  mn.instructions.remove(target);
-					  mn.instructions.remove(target2);
+		// replacement class is the same
+		// so is the instruction, but we'll leave it as being explicitly defined just in case
+		String method2_replaceinstruction_function = "writeInt";
+		String method2_replaceinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
+
+		// need to replace only this method descriptor
+		obf_deobf_pair method3_name = new obf_deobf_pair();
+		method3_name.setVal("func_149427_e", false);
+		method3_name.setVal("e", true);
+
+		// String method3_desc = "()B";
+		String method3_newdesc = "()I";
+
+
+		String potionID_intvar_name = "potionID_intvalue";
+		String potionID_intvar_desc = "I";
+		int potionID_intvar_access = 2;
+
+		FieldNode potionID_intvar = new FieldNode(potionID_intvar_access, potionID_intvar_name, potionID_intvar_desc, null, null);
+		cn.fields.add(potionID_intvar);
+
+		for(MethodNode mn: cn.methods) {
+			// LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
+			if(mn.name.equals(initmethod_name) && mn.desc.equals(initmethod_desc.getVal(is_obfuscated))) {
+				// init method
+				AbstractInsnNode toRemove1 = null;
+				AbstractInsnNode toRemove2 = null;
+				AbstractInsnNode toRemove3 = null;
+				AbstractInsnNode toReplace = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
+
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof MethodInsnNode) {
+						MethodInsnNode method = (MethodInsnNode)node;
+						if(method.owner.equals(initmethod_searchinstruction_owner.getVal(is_obfuscated)) && method.name.equals(initmethod_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(initmethod_searchinstruction_desc)) { //getPotionID
+							node = instructions.next();
+							if(node instanceof IntInsnNode && node.getOpcode() == Opcodes.SIPUSH) {
+								toRemove1 = node;
+								node = instructions.next();
+								if(node instanceof InsnNode && node.getOpcode() == Opcodes.IAND) {
+									toRemove2 = node;
+									node = instructions.next();
+									if(node instanceof InsnNode && node.getOpcode() == Opcodes.I2B) {
+										toRemove3 = node;
+										node = instructions.next();
+										if(node instanceof FieldInsnNode && node.getOpcode() == Opcodes.PUTFIELD && ((FieldInsnNode)node).name.equals(potionid_bytevar_name.getVal(is_obfuscated)) && ((FieldInsnNode)node).desc.equals(potionid_bytevar_origdesc)) {
+											toReplace = node;
+											break;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+
+				if(toRemove1 != null && toRemove2 != null && toRemove3 != null && toReplace != null) {
+					InsnNode new_nop = new InsnNode(Opcodes.NOP);
+					FieldInsnNode new_potion_id_variable = new FieldInsnNode(Opcodes.PUTFIELD, classname, potionID_intvar_name, potionID_intvar_desc);
+
+					mn.instructions.set(toRemove1, new_nop);
+					mn.instructions.set(toRemove2, new_nop);
+					mn.instructions.set(toRemove3, new_nop);
+					mn.instructions.set(toReplace, new_potion_id_variable);
+					LogHelper.debug("Core: Success! Replaced opcodes!" + mn.name + mn.desc);
+				}
+			}
+			else if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))) {
+				// readPacketData
+				AbstractInsnNode target = null;
+				AbstractInsnNode target2 = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
+
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof MethodInsnNode) {
+						MethodInsnNode method = (MethodInsnNode)node;
+						if(method.owner.equals(method1_searchinstruction_owner.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function) && method.desc.equals(method1_searchinstruction_desc)) {
+							target = node;
+							node = instructions.next();
+							if(node instanceof FieldInsnNode && node.getOpcode() == Opcodes.PUTFIELD && ((FieldInsnNode)node).name.equals(potionid_bytevar_name.getVal(is_obfuscated)) && ((FieldInsnNode)node).desc.equals(potionid_bytevar_origdesc)) {
+								target2 = node;
+								break;
+							}
+						}
+					}
+				}
+
+				if(target != null && target2 != null) {
+					InsnList new_if = new InsnList();
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
+					new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_checkinstruction_function, method1_checkinstruction_desc, false));
+					new_if.add(new IntInsnNode(Opcodes.BIPUSH, 7));
+					LabelNode elseLabel = new LabelNode();
+					new_if.add(new JumpInsnNode(Opcodes.IF_ICMPNE, elseLabel));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
+					new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc, false));
+					new_if.add(new FieldInsnNode(Opcodes.PUTFIELD, classname, potionID_intvar_name, potionID_intvar_desc));
+					LabelNode endIfLabel = new LabelNode();
+					new_if.add(new JumpInsnNode(Opcodes.GOTO, endIfLabel));
+					new_if.add(elseLabel);
+					new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
+					new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_searchinstruction_function, method1_searchinstruction_desc, false));
+					new_if.add(new FieldInsnNode(Opcodes.PUTFIELD, classname, potionID_intvar_name, potionID_intvar_desc));
+					new_if.add(endIfLabel);
+					new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+
+					mn.instructions.insertBefore(target.getPrevious().getPrevious(), new_if);
+					mn.instructions.remove(target.getPrevious().getPrevious()); // ALOAD 0
+					mn.instructions.remove(target.getPrevious()); // ALOAD 1
+					mn.instructions.remove(target);
+					mn.instructions.remove(target2);
 
 //				      MethodInsnNode new_readint = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc);
 //				      FieldInsnNode new_potion_id_variable = new FieldInsnNode(Opcodes.PUTFIELD, classname, potionID_intvar_name, potionID_intvar_desc);
 //
 //				      mn.instructions.set(target, new_readint);
 //				      mn.instructions.set(target2, new_potion_id_variable);
-				      LogHelper.debug("Core: Success!  Replaced opcodes!");
-			      }
-		      } else if (mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc.getVal(is_obfuscated))){
-			      // writePacketData
-			      AbstractInsnNode target = null;
-			      AbstractInsnNode target2 = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-				      AbstractInsnNode node = instructions.next();
-				      if (node instanceof FieldInsnNode && ((FieldInsnNode)node).getOpcode() == Opcodes.GETFIELD && ((FieldInsnNode)node).name.equals(potionid_bytevar_name.getVal(is_obfuscated)) && ((FieldInsnNode)node).desc.equals(potionid_bytevar_origdesc)){
-					      target = node;
-					      node = instructions.next();
-					      if (node instanceof MethodInsnNode && ((MethodInsnNode)node).owner.equals(method2_searchinstruction_owner.getVal(is_obfuscated)) && ((MethodInsnNode)node).name.equals(method2_searchinstruction_function) && ((MethodInsnNode)node).desc.equals(method2_searchinstruction_desc)){
-						      target2 = node;
-						      break;
-					      }
-					
-				      }
-			      }
-			      
-			      if (target != null && target2 != null){
-			      	  // I don't think this advanced packet logic is even needed, as a server running AM2 would require AM2 on the client anyway.
+					LogHelper.debug("Core: Success!  Replaced opcodes!");
+				}
+			}
+			else if(mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc.getVal(is_obfuscated))) {
+				// writePacketData
+				AbstractInsnNode target = null;
+				AbstractInsnNode target2 = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
+
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof FieldInsnNode && node.getOpcode() == Opcodes.GETFIELD && ((FieldInsnNode)node).name.equals(potionid_bytevar_name.getVal(is_obfuscated)) && ((FieldInsnNode)node).desc.equals(potionid_bytevar_origdesc)) {
+						target = node;
+						node = instructions.next();
+						if(node instanceof MethodInsnNode && ((MethodInsnNode)node).owner.equals(method2_searchinstruction_owner.getVal(is_obfuscated)) && ((MethodInsnNode)node).name.equals(method2_searchinstruction_function) && ((MethodInsnNode)node).desc.equals(method2_searchinstruction_desc)) {
+							target2 = node;
+							break;
+						}
+
+					}
+				}
+
+				if(target != null && target2 != null) {
+					// I don't think this advanced packet logic is even needed, as a server running AM2 would require AM2 on the client anyway.
 //					  InsnList new_if = new InsnList();
 //					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
 //					  new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method2_searchinstruction_owner.getVal(is_obfuscated), method2_checkinstruction_function, method2_checkinstruction_desc, false));
@@ -1138,270 +1100,269 @@ public class BytecodeTransformers implements IClassTransformer{
 //					  mn.instructions.remove(target);
 //					  mn.instructions.remove(target2);
 
-				      FieldInsnNode new_potion_id_variable = new FieldInsnNode(Opcodes.GETFIELD, classname, potionID_intvar_name, potionID_intvar_desc);
-				      MethodInsnNode new_writeint = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method2_searchinstruction_owner.getVal(is_obfuscated), method2_replaceinstruction_function, method2_replaceinstruction_desc);
+					FieldInsnNode new_potion_id_variable = new FieldInsnNode(Opcodes.GETFIELD, classname, potionID_intvar_name, potionID_intvar_desc);
+					MethodInsnNode new_writeint = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method2_searchinstruction_owner.getVal(is_obfuscated), method2_replaceinstruction_function, method2_replaceinstruction_desc, false);
 
-				      mn.instructions.set(target, new_potion_id_variable);
-				      mn.instructions.set(target2, new_writeint);
-				      LogHelper.debug("Core: Success!  Replaced opcodes!");
-			      }
-		      }
-	      }
-	      
-	      // access qualifier = 1 = public
-	      LogHelper.debug("Core: Creating new getPotionID method");
-	      MethodNode newGetPotionIDMethod = new MethodNode(1, "getPotionID", method3_newdesc, null, null);
-	      newGetPotionIDMethod.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
-	      newGetPotionIDMethod.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classname, potionID_intvar_name, potionID_intvar_desc));
-	      newGetPotionIDMethod.instructions.add(new InsnNode(Opcodes.IRETURN));
-	      cn.methods.add(newGetPotionIDMethod);
+					mn.instructions.set(target, new_potion_id_variable);
+					mn.instructions.set(target2, new_writeint);
+					LogHelper.debug("Core: Success!  Replaced opcodes!");
+				}
+			}
+		}
 
-	      ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-	      cn.accept(cw);
+		// access qualifier = 1 = public
+		LogHelper.debug("Core: Creating new getPotionID method");
+		MethodNode newGetPotionIDMethod = new MethodNode(1, "getPotionID", method3_newdesc, null, null);
+		newGetPotionIDMethod.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
+		newGetPotionIDMethod.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classname, potionID_intvar_name, potionID_intvar_desc));
+		newGetPotionIDMethod.instructions.add(new InsnNode(Opcodes.IRETURN));
+		cn.methods.add(newGetPotionIDMethod);
 
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		cn.accept(cw);
+
+		// TODO see what it actually does and maybe remove 
 		//debug
-		if (!is_obfuscated){
-			try{
+		if(!is_obfuscated) {
+			try {
 				File outDir = new File("asm/am2");
 				outDir.mkdirs();
-				DataOutputStream dout = new DataOutputStream(new FileOutputStream(new File(outDir, "SD1PacketEntityEffect_post.class")));
+				DataOutputStream dout = new DataOutputStream(Files.newOutputStream(new File(outDir, "SD1PacketEntityEffect_post.class").toPath()));
 				dout.write(cw.toByteArray());
 				dout.flush();
 				dout.close();
-			}catch (Exception e){
+			}
+			catch(Exception e) {
 				e.printStackTrace();
 			}
 		}
 
-	      return cw.toByteArray();
-	}
-	
-	private byte[] alterNetHandlerPlayClient(byte[] bytes, boolean is_obfuscated){
-	      ClassReader cr = new ClassReader(bytes);
-	      ClassNode cn = new ClassNode();
-	      cr.accept(cn, 0);
-	      
-	      // Minecraft r1.7.10:
-	      // NetHandlerPlayClient.java = bjb.class
-	      
-	      // NetHandlerPlayClient.handleEntityEffect(S1DPacketEntityEffect) = bjb.a(in)
-	      // MCP mapping: bjb/a (Lin;)V net/minecraft/client/network/NetHandlerPlayClient/func_147260_a (Lnet/minecraft/network/play/server/S1DPacketEntityEffect;)V
-	      
-	      // Instruction which we're searching for: invokevirtual,
-	      // S1DPacketEntityEffect/func_149427_e ()B [deobfuscated]
-	      // in/e ()B [obfuscated]
-	      // replace with S1DPacketEntityEffect/func_149427_e or in/e, ()I
-	      
-	      obf_deobf_pair method1_name = new obf_deobf_pair();
-	      method1_name.setVal("handleEntityEffect", false);
-	      method1_name.setVal("a", true);
-	      
-	      obf_deobf_pair method1_desc = new obf_deobf_pair();
-	      method1_desc.setVal("(Lnet/minecraft/network/play/server/S1DPacketEntityEffect;)V", false);
-	      method1_desc.setVal("(Lin;)V", true);
-	      
-	      obf_deobf_pair method1_searchinstruction_class = new obf_deobf_pair();
-	      method1_searchinstruction_class.setVal("net/minecraft/network/play/server/S1DPacketEntityEffect", false);
-	      method1_searchinstruction_class.setVal("in", true);
-	      
-	      obf_deobf_pair method1_searchinstruction_function = new obf_deobf_pair();
-	      method1_searchinstruction_function.setVal("func_149427_e", false);
-	      method1_searchinstruction_function.setVal("e", true);
-	      
-	      String method1_searchinstruction_desc = "()B";
-	      
-	      String method1_replaceinstruction_function = "getPotionID";
-	      String method1_replaceinstruction_desc = "()I";
-	      
-	      for (MethodNode mn : cn.methods){
-		      // LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
-		      if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))){
-			      AbstractInsnNode target = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-				      AbstractInsnNode node = instructions.next();
-				      if (node instanceof MethodInsnNode){
-					      MethodInsnNode method = (MethodInsnNode)node;
-					      if (method.owner.equals(method1_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc)){
-						      target = method;
-						      break;
-					      }
-				      }
-			      }
-
-			      if (target != null){
-				MethodInsnNode newset = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc);
-
-				mn.instructions.set(target, newset);
-				
-				LogHelper.debug("Core: Success!  Replaced opcode!");
-			      }
-		      }
-	      }
-	      
-	      
-	      ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-	      cn.accept(cw);
-	      return cw.toByteArray();
+		return cw.toByteArray();
 	}
 
-	private byte[] alterS1EPacketRemoveEntityEffect(byte[] bytes, boolean is_obfuscated){
-	      ClassReader cr = new ClassReader(bytes);
-	      ClassNode cn = new ClassNode();
-	      cr.accept(cn, 0);
-	      
-	      // Minecraft r1.7.10:
-	      // net.minecraft.network.play.server.S1EPacketRemoveEntityEffect.java --> hr.class
-	      
-	      // functions to change:
-	      // S1EPacketRemoveEntityEffect.readPacketData() = hr/a
-	      // MCP mapping: MD: hr/a (Let;)V net/minecraft/network/play/server/S1EPacketRemoveEntityEffect/func_148837_a (Lnet/minecraft/network/PacketBuffer;)V
-	      
-	      obf_deobf_pair method1_name = new obf_deobf_pair();
-	      method1_name.setVal("readPacketData", false);
-	      method1_name.setVal("a", true);
-	      
-	      obf_deobf_pair method1_desc = new obf_deobf_pair();
-	      method1_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
-	      method1_desc.setVal("(Let;)V", true);
-	      
-	      obf_deobf_pair method1_searchinstruction_owner = new obf_deobf_pair();
-	      method1_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
-	      method1_searchinstruction_owner.setVal("et", true);
-	      
-	      // change from readUnsignedByte to readInt
-	      String method1_searchinstruction_function = "readUnsignedByte";
-	      String method1_searchinstruction_desc = "()S";
+	private byte[] alterNetHandlerPlayClient(byte[] bytes, boolean is_obfuscated) {
+		ClassReader cr = new ClassReader(bytes);
+		ClassNode cn = new ClassNode();
+		cr.accept(cn, 0);
 
-		  // method used to check if receiving a vanilla or AM2 packet
-		  String method1_checkinstruction_function = "readableBytes";
-		  String method1_checkinstruction_desc = "()I";
-	      
-	      // replacement class is the same
-	      String method1_replaceinstruction_function = "readInt";
-	      String method1_replaceinstruction_desc = "()I";
-	      
-	      
-	      obf_deobf_pair method2_name = new obf_deobf_pair();
-	      method2_name.setVal("writePacketData", false);
-	      method2_name.setVal("b", true);
-	      
-	      obf_deobf_pair method2_desc = new obf_deobf_pair();
-	      method2_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
-	      method2_desc.setVal("(Let;)V", true);
-	      
-	      obf_deobf_pair method2_searchinstruction_owner = new obf_deobf_pair();
-	      method2_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
-	      method2_searchinstruction_owner.setVal("et", true);
-	      
-	      // change from writeByte to writeInt
-	      String method2_searchinstruction_function = "writeByte";
-	      String method2_searchinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
-	      
-	      // replacement class is the same
-	      // so is the instruction, but we'll leave it as being explicitly defined just in case
-	      String method2_replaceinstruction_function = "writeInt";
-	      String method2_replaceinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
+		// Minecraft r1.7.10:
+		// NetHandlerPlayClient.java = bjb.class
 
-	      
-	      for (MethodNode mn : cn.methods){
-		      // LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
-		      if (mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))){
-			      // readPacketData
-			      AbstractInsnNode target = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-				      AbstractInsnNode node = instructions.next();
-				      if (node instanceof MethodInsnNode){
-					      MethodInsnNode method = (MethodInsnNode)node;
-					      if (method.owner.equals(method1_searchinstruction_owner.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function) && method.desc.equals(method1_searchinstruction_desc)){
-						      target = node;
-						      break;
-					      }
-				      }
-			      }
-			      
-			      if (target != null){
-			      	  FieldInsnNode fieldNode = (FieldInsnNode)target.getNext();
-					  InsnList new_if = new InsnList();
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
-					  new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_checkinstruction_function, method1_checkinstruction_desc, false));
-					  new_if.add(new IntInsnNode(Opcodes.BIPUSH, Integer.BYTES));
-					  LabelNode elseLabel = new LabelNode();
-					  new_if.add(new JumpInsnNode(Opcodes.IF_ICMPNE, elseLabel));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
-					  new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc, false));
-					  new_if.add(fieldNode.clone(null));
-					  LabelNode endIfLabel = new LabelNode();
-					  new_if.add(new JumpInsnNode(Opcodes.GOTO, endIfLabel));
-					  new_if.add(elseLabel);
-					  new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
-					  new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
-					  new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_searchinstruction_function, method1_searchinstruction_desc, false));
-					  new_if.add(fieldNode.clone(null));
-					  new_if.add(endIfLabel);
-					  new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+		// NetHandlerPlayClient.handleEntityEffect(S1DPacketEntityEffect) = bjb.a(in)
+		// MCP mapping: bjb/a (Lin;)V net/minecraft/client/network/NetHandlerPlayClient/func_147260_a (Lnet/minecraft/network/play/server/S1DPacketEntityEffect;)V
 
-					  mn.instructions.insertBefore(target.getPrevious().getPrevious(), new_if);
-					  mn.instructions.remove(target.getPrevious().getPrevious()); // ALOAD 0
-					  mn.instructions.remove(target.getPrevious()); // ALOAD 1
-					  mn.instructions.remove(target);
-					  mn.instructions.remove(fieldNode); // PUTFIELD
+		// Instruction which we're searching for: invokevirtual,
+		// S1DPacketEntityEffect/func_149427_e ()B [deobfuscated]
+		// in/e ()B [obfuscated]
+		// replace with S1DPacketEntityEffect/func_149427_e or in/e, ()I
+
+		obf_deobf_pair method1_name = new obf_deobf_pair();
+		method1_name.setVal("handleEntityEffect", false);
+		method1_name.setVal("a", true);
+
+		obf_deobf_pair method1_desc = new obf_deobf_pair();
+		method1_desc.setVal("(Lnet/minecraft/network/play/server/S1DPacketEntityEffect;)V", false);
+		method1_desc.setVal("(Lin;)V", true);
+
+		obf_deobf_pair method1_searchinstruction_class = new obf_deobf_pair();
+		method1_searchinstruction_class.setVal("net/minecraft/network/play/server/S1DPacketEntityEffect", false);
+		method1_searchinstruction_class.setVal("in", true);
+
+		obf_deobf_pair method1_searchinstruction_function = new obf_deobf_pair();
+		method1_searchinstruction_function.setVal("func_149427_e", false);
+		method1_searchinstruction_function.setVal("e", true);
+
+		String method1_searchinstruction_desc = "()B";
+
+		String method1_replaceinstruction_function = "getPotionID";
+		String method1_replaceinstruction_desc = "()I";
+
+		for(MethodNode mn: cn.methods) {
+			// LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))) {
+				AbstractInsnNode target = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
+
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof MethodInsnNode) {
+						MethodInsnNode method = (MethodInsnNode)node;
+						if(method.owner.equals(method1_searchinstruction_class.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function.getVal(is_obfuscated)) && method.desc.equals(method1_searchinstruction_desc)) {
+							target = method;
+							break;
+						}
+					}
+				}
+
+				if(target != null) {
+					MethodInsnNode newset = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_class.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc, false);
+
+					mn.instructions.set(target, newset);
+
+					LogHelper.debug("Core: Success!  Replaced opcode!");
+				}
+			}
+		}
+
+
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		cn.accept(cw);
+		return cw.toByteArray();
+	}
+
+	private byte[] alterS1EPacketRemoveEntityEffect(byte[] bytes, boolean is_obfuscated) {
+		ClassReader cr = new ClassReader(bytes);
+		ClassNode cn = new ClassNode();
+		cr.accept(cn, 0);
+
+		// Minecraft r1.7.10:
+		// net.minecraft.network.play.server.S1EPacketRemoveEntityEffect.java --> hr.class
+
+		// functions to change:
+		// S1EPacketRemoveEntityEffect.readPacketData() = hr/a
+		// MCP mapping: MD: hr/a (Let;)V net/minecraft/network/play/server/S1EPacketRemoveEntityEffect/func_148837_a (Lnet/minecraft/network/PacketBuffer;)V
+
+		obf_deobf_pair method1_name = new obf_deobf_pair();
+		method1_name.setVal("readPacketData", false);
+		method1_name.setVal("a", true);
+
+		obf_deobf_pair method1_desc = new obf_deobf_pair();
+		method1_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
+		method1_desc.setVal("(Let;)V", true);
+
+		obf_deobf_pair method1_searchinstruction_owner = new obf_deobf_pair();
+		method1_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
+		method1_searchinstruction_owner.setVal("et", true);
+
+		// change from readUnsignedByte to readInt
+		String method1_searchinstruction_function = "readUnsignedByte";
+		String method1_searchinstruction_desc = "()S";
+
+		// method used to check if receiving a vanilla or AM2 packet
+		String method1_checkinstruction_function = "readableBytes";
+		String method1_checkinstruction_desc = "()I";
+
+		// replacement class is the same
+		String method1_replaceinstruction_function = "readInt";
+		String method1_replaceinstruction_desc = "()I";
+
+
+		obf_deobf_pair method2_name = new obf_deobf_pair();
+		method2_name.setVal("writePacketData", false);
+		method2_name.setVal("b", true);
+
+		obf_deobf_pair method2_desc = new obf_deobf_pair();
+		method2_desc.setVal("(Lnet/minecraft/network/PacketBuffer;)V", false);
+		method2_desc.setVal("(Let;)V", true);
+
+		obf_deobf_pair method2_searchinstruction_owner = new obf_deobf_pair();
+		method2_searchinstruction_owner.setVal("net/minecraft/network/PacketBuffer", false);
+		method2_searchinstruction_owner.setVal("et", true);
+
+		// change from writeByte to writeInt
+		String method2_searchinstruction_function = "writeByte";
+		String method2_searchinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
+
+		// replacement class is the same
+		// so is the instruction, but we'll leave it as being explicitly defined just in case
+		String method2_replaceinstruction_function = "writeInt";
+		String method2_replaceinstruction_desc = "(I)Lio/netty/buffer/ByteBuf;";
+
+
+		for(MethodNode mn: cn.methods) {
+			// LogHelper.debug("Currently on: method " + mn.name + ", description " + mn.desc);
+			if(mn.name.equals(method1_name.getVal(is_obfuscated)) && mn.desc.equals(method1_desc.getVal(is_obfuscated))) {
+				// readPacketData
+				AbstractInsnNode target = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
+
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof MethodInsnNode) {
+						MethodInsnNode method = (MethodInsnNode)node;
+						if(method.owner.equals(method1_searchinstruction_owner.getVal(is_obfuscated)) && method.name.equals(method1_searchinstruction_function) && method.desc.equals(method1_searchinstruction_desc)) {
+							target = node;
+							break;
+						}
+					}
+				}
+
+				if(target != null) {
+					FieldInsnNode fieldNode = (FieldInsnNode)target.getNext();
+					InsnList new_if = new InsnList();
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
+					new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_checkinstruction_function, method1_checkinstruction_desc, false));
+					new_if.add(new IntInsnNode(Opcodes.BIPUSH, Integer.BYTES));
+					LabelNode elseLabel = new LabelNode();
+					new_if.add(new JumpInsnNode(Opcodes.IF_ICMPNE, elseLabel));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
+					new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc, false));
+					new_if.add(fieldNode.clone(null));
+					LabelNode endIfLabel = new LabelNode();
+					new_if.add(new JumpInsnNode(Opcodes.GOTO, endIfLabel));
+					new_if.add(elseLabel);
+					new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 0));
+					new_if.add(new VarInsnNode(Opcodes.ALOAD, 1));
+					new_if.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_searchinstruction_function, method1_searchinstruction_desc, false));
+					new_if.add(fieldNode.clone(null));
+					new_if.add(endIfLabel);
+					new_if.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+
+					mn.instructions.insertBefore(target.getPrevious().getPrevious(), new_if);
+					mn.instructions.remove(target.getPrevious().getPrevious()); // ALOAD 0
+					mn.instructions.remove(target.getPrevious()); // ALOAD 1
+					mn.instructions.remove(target);
+					mn.instructions.remove(fieldNode); // PUTFIELD
 
 //				      MethodInsnNode new_readint = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method1_searchinstruction_owner.getVal(is_obfuscated), method1_replaceinstruction_function, method1_replaceinstruction_desc);
 //
 //				      mn.instructions.set(target, new_readint);
-				      LogHelper.debug("Core: Success!  Replaced opcodes!");
-			      }
-		      } else if (mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc.getVal(is_obfuscated))){
-			      // writePacketData
-			      AbstractInsnNode target = null;
-			      LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
-			      
-			      Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
-			      while (instructions.hasNext()){
-			      AbstractInsnNode node = instructions.next();
-				      if (node instanceof MethodInsnNode && ((MethodInsnNode)node).owner.equals(method2_searchinstruction_owner.getVal(is_obfuscated)) && ((MethodInsnNode)node).name.equals(method2_searchinstruction_function) && ((MethodInsnNode)node).desc.equals(method2_searchinstruction_desc)){
-					      target = node;
-					      break;
-				      }
-					
-			      }
-			      
-			      if (target != null){
-				      // FieldInsnNode new_potion_id_variable = new FieldInsnNode(Opcodes.GETFIELD, classname, potionID_intvar_name, potionID_intvar_desc);
-				      MethodInsnNode new_writeint = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method2_searchinstruction_owner.getVal(is_obfuscated), method2_replaceinstruction_function, method2_replaceinstruction_desc);
-				      
-				      mn.instructions.set(target, new_writeint);
-				      LogHelper.debug("Core: Success!  Replaced opcodes!");
-			      }
-		      }
-	      }
+					LogHelper.debug("Core: Success!  Replaced opcodes!");
+				}
+			}
+			else if(mn.name.equals(method2_name.getVal(is_obfuscated)) && mn.desc.equals(method2_desc.getVal(is_obfuscated))) {
+				// writePacketData
+				AbstractInsnNode target = null;
+				LogHelper.debug("Core: Located target method " + mn.name + mn.desc);
 
-	      ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-	      cn.accept(cw);
-	      return cw.toByteArray();
-	}
-	
-	private boolean matchFieldNode(FieldInsnNode node, int opcode, String owner, String name, String desc){
-		if (node.getOpcode() == opcode && node.owner.equals(owner) && node.name.equals(name) && node.desc.equals(desc))
-			return true;
-		return false;
+				Iterator<AbstractInsnNode> instructions = mn.instructions.iterator();
+				while(instructions.hasNext()) {
+					AbstractInsnNode node = instructions.next();
+					if(node instanceof MethodInsnNode && ((MethodInsnNode)node).owner.equals(method2_searchinstruction_owner.getVal(is_obfuscated)) && ((MethodInsnNode)node).name.equals(method2_searchinstruction_function) && ((MethodInsnNode)node).desc.equals(method2_searchinstruction_desc)) {
+						target = node;
+						break;
+					}
+
+				}
+
+				if(target != null) {
+					// FieldInsnNode new_potion_id_variable = new FieldInsnNode(Opcodes.GETFIELD, classname, potionID_intvar_name, potionID_intvar_desc);
+					MethodInsnNode new_writeint = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, method2_searchinstruction_owner.getVal(is_obfuscated), method2_replaceinstruction_function, method2_replaceinstruction_desc, false);
+
+					mn.instructions.set(target, new_writeint);
+					LogHelper.debug("Core: Success!  Replaced opcodes!");
+				}
+			}
+		}
+
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		cn.accept(cw);
+		return cw.toByteArray();
 	}
 
-	private boolean matchMethodNode(MethodInsnNode node, int opcode, String owner, String name, String desc){
-		if (node.getOpcode() == opcode && node.owner.equals(owner) && node.name.equals(name) && node.desc.equals(desc))
-			return true;
-		return false;
+	private boolean matchFieldNode(FieldInsnNode node, int opcode, String owner, String name, String desc) {
+		return node.getOpcode() == opcode && node.owner.equals(owner) && node.name.equals(name) && node.desc.equals(desc);
 	}
 
-	private void debugPrintInsns(MethodNode mn){
+	private boolean matchMethodNode(MethodInsnNode node, int opcode, String owner, String name, String desc) {
+		return node.getOpcode() == opcode && node.owner.equals(owner) && node.name.equals(name) && node.desc.equals(desc);
+	}
+
+	private void debugPrintInsns(MethodNode mn) {
 		Iterator<AbstractInsnNode> it = mn.instructions.iterator();
 
 		LogHelper.debug("Core: Beginning dump of Insns for %s %s", mn.name, mn.desc);
@@ -1409,17 +1370,20 @@ public class BytecodeTransformers implements IClassTransformer{
 		LogHelper.debug("================================================================================");
 		LogHelper.log(Level.INFO, "");
 
-		while (it.hasNext()){
+		while(it.hasNext()) {
 			AbstractInsnNode node = it.next();
 			String className = node.toString().split("@")[0];
 			className = className.substring(className.lastIndexOf(".") + 1);
-			if (node instanceof VarInsnNode){
+			if(node instanceof VarInsnNode) {
 				LogHelper.log(Level.INFO, opcodeToString(node.getOpcode()) + " " + ((VarInsnNode)node).var);
-			}else if (node instanceof FieldInsnNode){
+			}
+			else if(node instanceof FieldInsnNode) {
 				LogHelper.log(Level.INFO, opcodeToString(node.getOpcode()) + " " + ((FieldInsnNode)node).owner + "/" + ((FieldInsnNode)node).name + " (" + ((FieldInsnNode)node).desc + ")");
-			}else if (node instanceof MethodInsnNode){
+			}
+			else if(node instanceof MethodInsnNode) {
 				LogHelper.log(Level.INFO, opcodeToString(node.getOpcode()) + " " + ((MethodInsnNode)node).owner + "/" + ((MethodInsnNode)node).name + " " + ((MethodInsnNode)node).desc);
-			}else{
+			}
+			else {
 				LogHelper.log(Level.INFO, className + " >> " + opcodeToString(node.getOpcode()));
 			}
 		}
@@ -1428,42 +1392,44 @@ public class BytecodeTransformers implements IClassTransformer{
 		LogHelper.debug("Core: End");
 	}
 
-	private String opcodeToString(int opcode){
+	private String opcodeToString(int opcode) {
 		Field[] fields = Opcodes.class.getFields();
-		for (Field f : fields){
-			if (f.getType() == Integer.class || f.getType() == int.class){
-				try{
-					if (f.getInt(null) == opcode){
+		for(Field f: fields) {
+			if(f.getType() == Integer.class || f.getType() == int.class) {
+				try {
+					if(f.getInt(null) == opcode) {
 						return f.getName();
 					}
-				}catch (Throwable t){ /* Don't care */ }
+				}
+				catch(Throwable t) { /* Don't care */ }
 			}
 		}
 		return "OPCODE_UNKNOWN";
 	}
 
-	public class obf_deobf_pair{
+	public static class obf_deobf_pair {
 		private String deobf_val;
 		private String obf_val;
 
-		public obf_deobf_pair(){
+		public obf_deobf_pair() {
 			deobf_val = "";
 			obf_val = "";
 		}
 
-		public void setVal(String value, boolean is_obfuscated){
-			if (is_obfuscated){
+		public void setVal(String value, boolean is_obfuscated) {
+			if(is_obfuscated) {
 				obf_val = value;
-			} else{
+			}
+			else {
 				deobf_val = value;
 			}
 		}
 
-		public String getVal(boolean is_obfuscated){
-			if (is_obfuscated){
+		public String getVal(boolean is_obfuscated) {
+			if(is_obfuscated) {
 				return obf_val;
 			}
-			else{
+			else {
 				return deobf_val;
 			}
 		}

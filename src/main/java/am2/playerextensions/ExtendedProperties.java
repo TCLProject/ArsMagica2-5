@@ -1488,20 +1488,21 @@ public class ExtendedProperties implements IExtendedProperties, IExtendedEntityP
 			return hashCode() + " (error)";
 		}
 	}
-	
+
 	public void handleExtendedPropertySync(){
-		if (!entity.worldObj.isRemote && !this.getHasDoneFullSync()) {
-			this.setFullSync();
-		}
+		if (entity != null && entity.worldObj != null) {
+			if (!entity.worldObj.isRemote && !this.getHasDoneFullSync()) {
+				this.setFullSync();
+			}
+			if (!entity.worldObj.isRemote && this.getHasUpdate()){
+				byte[] data = this.getUpdateData();
+				if (data != null) {
+					AMNetHandler.INSTANCE.sendPacketToAllClientsNear(entity.dimension, entity.posX, entity.posY, entity.posZ, 32, AMPacketIDs.SYNC_EXTENDED_PROPS, data);
+				}
+			}
+			if (entity.worldObj.isRemote && (this.detectPossibleDesync())){
+					AMNetHandler.INSTANCE.sendPacketToServer(AMPacketIDs.POSSIBLE_CLIENT_EXPROP_DESYNC, new AMDataWriter().add(entity.getEntityId()).generate());
 
-		if (!entity.worldObj.isRemote && this.getHasUpdate()){
-			byte[] data = this.getUpdateData();
-			AMNetHandler.INSTANCE.sendPacketToAllClientsNear(entity.dimension, entity.posX, entity.posY, entity.posZ, 32, AMPacketIDs.SYNC_EXTENDED_PROPS, data);
-		}
-
-		if (entity.worldObj.isRemote){
-			if (this.detectPossibleDesync()){
-				AMNetHandler.INSTANCE.sendPacketToServer(AMPacketIDs.POSSIBLE_CLIENT_EXPROP_DESYNC, new AMDataWriter().add(entity.getEntityId()).generate());
 			}
 		}
 	}
